@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SkinCart - selfie to basket with YouCam AI</title>
+<style>
+body{font-family:system-ui,sans-serif;max-width:860px;margin:0 auto;padding:16px;background:#fff7f5;color:#2b2b2b}
+h1{color:#c2185b;margin-bottom:0}.sub{color:#777;margin-top:4px}.card{background:#fff;border-radius:14px;padding:16px;margin:14px 0;box-shadow:0 2px 10px #0001}
+button{background:#c2185b;color:#fff;border:0;border-radius:10px;padding:10px 16px;cursor:pointer;font-size:15px}button.alt{background:#fff;color:#c2185b;border:1px solid #c2185b}
+.bar{height:10px;background:#eee;border-radius:5px;overflow:hidden}.bar>i{display:block;height:100%;background:linear-gradient(90deg,#e57373,#81c784)}
+.row{display:flex;gap:14px;flex-wrap:wrap}.row>*{flex:1 1 240px}img.prev{max-width:100%;border-radius:12px}.prod{border-bottom:1px solid #eee;padding:8px 0}
+.tag{font-size:12px;background:#fde4ec;color:#c2185b;border-radius:6px;padding:2px 6px}input{padding:9px;border:1px solid #ccc;border-radius:8px;width:100%;box-sizing:border-box;margin:4px 0}
+</style></head><body>
+<h1>SkinCart 💄</h1><p class="sub">Selfie → <b>YouCam AI Skin Analysis</b> → a routine from the shop → <b>makeup try-on</b> → order. Same flow runs in our Telegram bot.</p>
+<div class="card"><input type="file" id="file" accept="image/*" capture="user"> <button onclick="analyze()">Analyze my skin</button>
+<span id="mode" class="tag"></span><p id="status"></p></div>
+<div id="out" style="display:none">
+ <div class="row"><div class="card"><img id="preview" class="prev" alt="selfie"></div>
+ <div class="card"><h3>Skin snapshot</h3><div id="scores"></div></div></div>
+ <div class="card"><h3>Your routine</h3><div id="basket"></div><p><b>Total: $<span id="total"></span></b></p></div>
+ <div class="card"><h3>Virtual try-on</h3><div id="tryon"></div><img id="vto" class="prev" style="max-width:280px;margin-top:10px"></div>
+ <div class="card"><h3>Order</h3><input id="name" placeholder="Name"><input id="phone" placeholder="Phone, e.g. +998 90 123 45 67">
+ <button onclick="order()">Place order</button><p id="ordered"></p></div>
+</div>
+<script>
+let scan=null;const $=id=>document.getElementById(id);
+fetch('/version').then(r=>r.json()).then(v=>$('mode').textContent='YouCam: '+v.youcam.mode);
+async function post(url,body){const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+ const j=await r.json();if(!r.ok)throw new Error(j.detail||r.status);return j}
+async function analyze(){const f=$('file').files[0];if(!f){$('status').textContent='Pick a selfie first';return}
+ $('status').textContent='Analyzing with YouCam AI…';const b64=await new Promise(res=>{const fr=new FileReader();fr.onload=()=>res(fr.result);fr.readAsDataURL(f)});
+ try{scan=await post('/analyze',{image_base64:b64,content_type:f.type||'image/jpeg'})}catch(e){$('status').textContent='Error: '+e.message;return}
+ $('status').textContent=scan.cached?'Loaded from cache (0 units used)':'Done';$('preview').src=b64;$('out').style.display='block';
+ $('scores').innerHTML=scan.scores.sort((a,b)=>a.ui_score-b.ui_score).map(s=>`<div>${s.type.replace('_v2','')} <b>${s.ui_score}</b><div class="bar"><i style="width:${s.ui_score}%"></i></div></div>`).join('');
+ $('basket').innerHTML=scan.basket.map(p=>`<div class="prod"><b>${p.name}</b> <span class="tag">${p.category}</span> $${p.price}<br><small>${p.reason}</small></div>`).join('');
+ $('total').textContent=scan.basket.reduce((a,p)=>a+p.price,0).toFixed(2);
+ $('tryon').innerHTML=scan.tryon.map(p=>`<button class="alt" onclick="tryOn('${p.sku}')">Try ${p.name}</button> `).join('')}
+async function tryOn(sku){$('vto').alt='rendering…';try{const r=await post('/tryon',{scan_id:scan.scan_id,sku});$('vto').src=r.image_url}catch(e){$('vto').alt=e.message}}
+async function order(){try{const r=await post('/orders',{scan_id:scan.scan_id,name:$('name').value||'Guest',phone:$('phone').value,skus:scan.basket.map(p=>p.sku),source:'web'});
+ $('ordered').textContent=`✅ Order saved as LeadFlow lead #${r.lead.id} (score ${r.lead.score}, total $${r.lead.extra.total})`}catch(e){$('ordered').textContent='Error: '+e.message}}
+</script></body></html>

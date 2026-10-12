@@ -1,0 +1,25 @@
+{
+  "name": "SkinCart: order -> notify shop owner -> 14-day re-scan follow-up",
+  "nodes": [
+    {"parameters": {"httpMethod": "POST", "path": "skincart-order", "responseMode": "onReceived"},
+     "name": "Order webhook", "type": "n8n-nodes-base.webhook", "typeVersion": 2, "position": [0, 0]},
+    {"parameters": {"chatId": "={{$env.OWNER_CHAT_ID}}",
+      "text": "=🛒 New SkinCart order #{{$json.body.lead.id}} from {{$json.body.lead.name}} ({{$json.body.lead.phone || $json.body.lead.email}})\nItems: {{$json.body.lead.extra.basket.map(b => b.name).join(', ')}}\nTotal: ${{$json.body.lead.extra.total}}\nSkin concerns: {{$json.body.lead.extra.skin_profile.map(c => c.label + ' ' + c.ui_score).join(', ')}}\nLead score: {{$json.body.lead.score}}"},
+     "name": "Notify shop owner", "type": "n8n-nodes-base.telegram", "typeVersion": 1.2, "position": [260, -100],
+     "credentials": {"telegramApi": {"id": "", "name": "SkinCart bot"}}},
+    {"parameters": {"conditions": {"boolean": [{"value1": "={{!!$json.body.lead.extra.telegram_chat_id}}", "value2": true}]}},
+     "name": "Came from Telegram?", "type": "n8n-nodes-base.if", "typeVersion": 1, "position": [260, 100]},
+    {"parameters": {"amount": 14, "unit": "days"},
+     "name": "Wait 14 days", "type": "n8n-nodes-base.wait", "typeVersion": 1.1, "position": [500, 100]},
+    {"parameters": {"chatId": "={{$('Order webhook').item.json.body.lead.extra.telegram_chat_id}}",
+      "text": "=Hi {{$('Order webhook').item.json.body.lead.name}}! It's been 2 weeks with your new routine 💆 Send me a fresh selfie and I'll re-scan your skin so you can see the progress."},
+     "name": "Re-scan reminder", "type": "n8n-nodes-base.telegram", "typeVersion": 1.2, "position": [740, 100],
+     "credentials": {"telegramApi": {"id": "", "name": "SkinCart bot"}}}
+  ],
+  "connections": {
+    "Order webhook": {"main": [[{"node": "Notify shop owner", "type": "main", "index": 0}, {"node": "Came from Telegram?", "type": "main", "index": 0}]]},
+    "Came from Telegram?": {"main": [[{"node": "Wait 14 days", "type": "main", "index": 0}], []]},
+    "Wait 14 days": {"main": [[{"node": "Re-scan reminder", "type": "main", "index": 0}]]}
+  },
+  "settings": {}
+}

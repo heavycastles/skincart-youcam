@@ -1,0 +1,14 @@
+[
+ {"sku":"SC-CLN-01","name":"Gentle Salicylic Cleanser 2%","category":"cleanser","price":12.0,"targets":["acne","oiliness","pore"],"why":"BHA unclogs pores and calms breakouts"},
+ {"sku":"SC-SER-02","name":"Niacinamide 10% + Zinc Serum","category":"serum","price":15.0,"targets":["pore","oiliness","texture","redness"],"why":"tightens look of pores, balances sebum"},
+ {"sku":"SC-SER-03","name":"Hyaluronic Acid Hydra Serum","category":"serum","price":14.0,"targets":["moisture","texture","firmness"],"why":"pulls water into dry skin"},
+ {"sku":"SC-SER-04","name":"Vitamin C 15% Glow Serum","category":"serum","price":22.0,"targets":["radiance","age_spot","dark_circle_v2"],"why":"brightens dull skin and fades spots"},
+ {"sku":"SC-NGT-05","name":"Retinal 0.05% Night Cream","category":"treatment","price":28.0,"targets":["wrinkle","firmness","texture","age_spot"],"why":"boosts cell turnover, softens lines"},
+ {"sku":"SC-EYE-06","name":"Caffeine Eye Gel","category":"eye","price":11.0,"targets":["eye_bag","dark_circle_v2"],"why":"de-puffs and wakes up the under-eye"},
+ {"sku":"SC-MST-07","name":"Ceramide Barrier Moisturizer","category":"moisturizer","price":16.0,"targets":["moisture","redness","firmness"],"why":"repairs the skin barrier"},
+ {"sku":"SC-CIC-08","name":"Centella Calming Cream","category":"moisturizer","price":17.0,"targets":["redness","acne"],"why":"soothes irritation and redness"},
+ {"sku":"SC-SPF-09","name":"Invisible Fluid SPF 50","category":"spf","price":18.0,"targets":["age_spot","wrinkle","redness","radiance"],"why":"daily UV protection prevents spots and lines"},
+ {"sku":"SC-LIP-10","name":"Velvet Matte Lipstick - Rose","category":"makeup","price":13.0,"targets":[],"vto":{"category":"lip_color","shape":{"name":"original"},"palettes":[{"color":"#b0455e","texture":"matte","colorIntensity":70}],"style":{"type":"full"}}},
+ {"sku":"SC-LIP-11","name":"Glossy Tint - Coral","category":"makeup","price":12.0,"targets":[],"vto":{"category":"lip_color","shape":{"name":"original"},"palettes":[{"color":"#f2685a","texture":"gloss","colorIntensity":65,"gloss":70,"transparencyIntensity":40}],"style":{"type":"full"}}},
+ {"sku":"SC-FND-12","name":"Skin Tint Foundation - Light Beige","category":"makeup","price":20.0,"targets":["redness","texture"],"why":"light coverage evens out tone","vto":{"category":"foundation","palettes":[{"color":"#e2b896","colorIntensity":50,"glowIntensity":40,"coverageIntensity":45}]}}
+]

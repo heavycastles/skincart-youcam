@@ -1,0 +1,23 @@
+# SkinCart app + n8n. Without YOUCAM_API_KEY the app runs in offline mock mode.
+services:
+  app:
+    build: .
+    ports: ["8080:8080"]
+    env_file: [{path: .env, required: false}]
+    environment:
+      N8N_WEBHOOK_URL: ${N8N_WEBHOOK_URL:-http://n8n:5678/webhook/skincart-order}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://localhost:8080/healthz')"]
+      interval: 10s
+  n8n:
+    image: n8nio/n8n:latest
+    ports: ["5678:5678"]
+    environment:
+      SKINCART_URL: http://app:8080
+      OWNER_CHAT_ID: ${OWNER_CHAT_ID:-}
+      N8N_SECURE_COOKIE: "false"
+    volumes:
+      - n8n_data:/home/node/.n8n
+      - ./n8n:/workflows:ro
+volumes:
+  n8n_data:
