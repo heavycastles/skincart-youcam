@@ -1,0 +1,18 @@
+# Render Blueprint — free-tier mock-friendly demo (SkinCart).
+# Deploy: https://dashboard.render.com/select-repo?type=blueprint
+# YOUCAM_API_KEY optional; empty = offline mock. Never commit secrets.
+services:
+  - type: web
+    name: skincart-youcam
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    plan: free
+    region: oregon
+    healthCheckPath: /healthz
+    envVars:
+      - key: YOUCAM_API_KEY
+        sync: false
+      - key: YOUCAM_MOCK
+        value: "1"
+      # TELEGRAM_BOT_TOKEN / N8N_WEBHOOK_URL optional; leave unset for web-only demo.

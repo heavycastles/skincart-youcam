@@ -79,10 +79,13 @@ Never commit `.env` or the API key.
 - Slides PDF: [`docs/slides.pdf`](docs/slides.pdf) · cover: [`docs/cover.png`](docs/cover.png)
 - Draft demo video: [`docs/demo-draft.mp4`](docs/demo-draft.mp4) (mock mode, synthetic face — pending user review)
 
-## Deploy (public demo)
+## Deploy demo (Render)
 
-Dockerfile listens on `$PORT`; deploy to Render / Fly.io / Railway / Cloud Run with `YOUCAM_API_KEY` (and optional
-`TELEGRAM_BOT_TOKEN`, `N8N_WEBHOOK_URL`) as secrets.
+Free-tier Blueprint: `render.yaml` (Docker, Oregon, `/healthz`). `YOUCAM_API_KEY` prompted
+(`sync: false`); default `YOUCAM_MOCK=1` for offline demo. Optional Telegram/n8n secrets unset for web-only.
+
+1. Push public repo (user approval) → [Render Blueprint](https://dashboard.render.com/select-repo?type=blueprint).
+2. Demo URL → `SUBMISSION.md` Links.
 
 ## License
 
