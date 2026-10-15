@@ -79,6 +79,14 @@ Never commit `.env` or the API key.
 - Slides PDF: [`docs/slides.pdf`](docs/slides.pdf) · cover: [`docs/cover.png`](docs/cover.png)
 - Draft demo video: [`docs/demo-draft.mp4`](docs/demo-draft.mp4) (mock mode, synthetic face — pending user review)
 
+
+## Preflight / publish (local)
+
+```bash
+./scripts/preflight_submit.sh
+# VISIBILITY=private ./scripts/publish_github.sh
+```
+
 ## Deploy demo (Render)
 
 Free-tier Blueprint: `render.yaml` (Docker, Oregon, `/healthz`). `YOUCAM_API_KEY` prompted
