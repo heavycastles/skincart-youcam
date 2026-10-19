@@ -1,0 +1,135 @@
+{
+  "timestamp_msk": "2026-10-19 16:43:25 MSK",
+  "elapsed_seconds": 12,
+  "image": "docs/stock-face/stock-face.jpg",
+  "attribution": "docs/stock-face/ATTRIBUTION.txt",
+  "endpoints": [
+    "POST /s2s/v2.0/file (upload)",
+    "POST /s2s/v2.0/task/skin-analysis",
+    "GET  /s2s/v2.0/task/skin-analysis/{task_id}",
+    "POST /s2s/v2.0/task/makeup-vto",
+    "GET  /s2s/v2.0/task/makeup-vto/{task_id}"
+  ],
+  "mode": "live",
+  "skin_concerns": [
+    {
+      "type": "redness",
+      "ui_score": 88,
+      "raw_score": 91.8677978515625,
+      "mask_urls": [
+        "https://yce-us.s3-accelerate.amazonaws.com/ttl30/511907947077447926/122823805718/v2/aeMNNB0KmUIP8rnQ996tC5Q/c6a0990d-0fa0-47d0-9f8a-c350d8081198_redness_output.jpg"
+      ]
+    },
+    {
+      "type": "eye_bag",
+      "ui_score": 76,
+      "raw_score": 68.53060126304626,
+      "mask_urls": [
+        "https://yce-us.s3-accelerate.amazonaws.com/ttl30/511907947077447926/122823805718/v2/aeMNNB0KmUIP8rnQ996tC5Q/c6a0990d-0fa0-47d0-9f8a-c350d8081198_eye_bag_output.jpg"
+      ]
+    },
+    {
+      "type": "pore",
+      "ui_score": 70,
+      "raw_score": 56.82276272773743,
+      "mask_urls": [
+        "https://yce-us.s3-accelerate.amazonaws.com/ttl30/511907947077447926/122823805718/v2/aeMNNB0KmUIP8rnQ996tC5Q/c6a0990d-0fa0-47d0-9f8a-c350d8081198_pore_output.jpg"
+      ]
+    },
+    {
+      "type": "age_spot",
+      "ui_score": 85,
+      "raw_score": 92.85514068603516,
+      "mask_urls": [
+        "https://yce-us.s3-accelerate.amazonaws.com/ttl30/511907947077447926/122823805718/v2/aeMNNB0KmUIP8rnQ996tC5Q/c6a0990d-0fa0-47d0-9f8a-c350d8081198_age_spot_output.jpg"
+      ]
+    },
+    {
+      "type": "firmness",
+      "ui_score": 78,
+      "raw_score": 74.07397627830505,
+      "mask_urls": [
+        "https://yce-us.s3-accelerate.amazonaws.com/ttl30/511907947077447926/122823805718/v2/aeMNNB0KmUIP8rnQ996tC5Q/c6a0990d-0fa0-47d0-9f8a-c350d8081198_firmness_output.jpg"
+      ]
+    },
+    {
+      "type": "oiliness",
+      "ui_score": 95,
+      "raw_score": 96.90556335449219,
+      "mask_urls": [
+        "https://yce-us.s3-accelerate.amazonaws.com/ttl30/511907947077447926/122823805718/v2/aeMNNB0KmUIP8rnQ996tC5Q/c6a0990d-0fa0-47d0-9f8a-c350d8081198_oiliness_output.jpg"
+      ]
+    },
+    {
+      "type": "texture",
+      "ui_score": 85,
+      "raw_score": 89.52876329421997,
+      "mask_urls": [
+        "https://yce-us.s3-accelerate.amazonaws.com/ttl30/511907947077447926/122823805718/v2/aeMNNB0KmUIP8rnQ996tC5Q/c6a0990d-0fa0-47d0-9f8a-c350d8081198_texture_output.jpg"
+      ]
+    },
+    {
+      "type": "radiance",
+      "ui_score": 93,
+      "raw_score": 95.47592401504517,
+      "mask_urls": [
+        "https://yce-us.s3-accelerate.amazonaws.com/ttl30/511907947077447926/122823805718/v2/aeMNNB0KmUIP8rnQ996tC5Q/c6a0990d-0fa0-47d0-9f8a-c350d8081198_radiance_output.jpg"
+      ]
+    },
+    {
+      "type": "wrinkle",
+      "ui_score": 77,
+      "raw_score": 82.51054883003235,
+      "mask_urls": [
+        "https://yce-us.s3-accelerate.amazonaws.com/ttl30/511907947077447926/122823805718/v2/aeMNNB0KmUIP8rnQ996tC5Q/c6a0990d-0fa0-47d0-9f8a-c350d8081198_wrinkle_output.jpg"
+      ]
+    },
+    {
+      "type": "dark_circle_v2",
+      "ui_score": 88,
+      "raw_score": 94.4441944360733,
+      "mask_urls": [
+        "https://yce-us.s3-accelerate.amazonaws.com/ttl30/511907947077447926/122823805718/v2/aeMNNB0KmUIP8rnQ996tC5Q/c6a0990d-0fa0-47d0-9f8a-c350d8081198_dark_circle_v2_output.jpg"
+      ]
+    },
+    {
+      "type": "acne",
+      "ui_score": 99,
+      "raw_score": 100.0,
+      "mask_urls": [
+        "https://yce-us.s3-accelerate.amazonaws.com/ttl30/511907947077447926/122823805718/v2/aeMNNB0KmUIP8rnQ996tC5Q/c6a0990d-0fa0-47d0-9f8a-c350d8081198_acne_output.jpg"
+      ]
+    },
+    {
+      "type": "moisture",
+      "ui_score": 73,
+      "raw_score": 57.848405838012695,
+      "mask_urls": [
+        "https://yce-us.s3-accelerate.amazonaws.com/ttl30/511907947077447926/122823805718/v2/aeMNNB0KmUIP8rnQ996tC5Q/c6a0990d-0fa0-47d0-9f8a-c350d8081198_moisture_output.jpg"
+      ]
+    },
+    {
+      "type": "all",
+      "ui_score": 0,
+      "raw_score": 0.0,
+      "mask_urls": []
+    },
+    {
+      "type": "skin_age",
+      "ui_score": 0,
+      "raw_score": 0.0,
+      "mask_urls": []
+    },
+    {
+      "type": "resize_image",
+      "ui_score": 0,
+      "raw_score": 0.0,
+      "mask_urls": [
+        "https://yce-us.s3-accelerate.amazonaws.com/ttl30/511907947077447926/122823805718/v2/aeMNNB0KmUIP8rnQ996tC5Q/c6a0990d-0fa0-47d0-9f8a-c350d8081198_resize_image.jpg"
+      ]
+    }
+  ],
+  "makeup_vto_url_host_path": "https://yce-us.s3-accelerate.amazonaws.com/ttl30/511907947077447926/122823810530/v2/aeMNNB0KmUIP8rnQ996tC5Q/8f209f4d-8595-4db6-91d7-646e79dd7c34.jpg",
+  "concern_count": 15,
+  "notes": "Face cropped so width >= ~72% of frame (YouCam requires >60%). Signed S3 query params stripped from stored URLs."
+}

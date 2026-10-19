@@ -78,6 +78,7 @@ Never commit `.env` or the API key.
 - Demo script: [`docs/video-script.md`](docs/video-script.md)
 - Slides PDF: [`docs/slides.pdf`](docs/slides.pdf) · cover: [`docs/cover.png`](docs/cover.png)
 - Draft demo video: [`docs/demo-draft.mp4`](docs/demo-draft.mp4) (mock mode, synthetic face — pending user review)
+- Live YouCam proof: [`docs/live-proof.md`](docs/live-proof.md) (2026-10-19, licensed Unsplash stock face)
 
 
 ## Preflight / publish (local)

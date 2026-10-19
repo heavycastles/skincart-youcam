@@ -1,0 +1,21 @@
+Licensed stock face for YouCam SkinCart live API proof
+=======================================================
+
+Photographer: Jake Nackos (@jakenackos)
+Source page:  https://unsplash.com/photos/IF9TK5Uy-KI
+Direct asset: https://images.unsplash.com/photo-1580489944761-15a19d654956
+Local file:   stock-face.jpg
+Description:  Front-facing studio portrait of an adult woman in a white crew-neck
+              shirt, smiling at camera (Unsplash: "woman in white crew neck
+              shirt smiling"). Local file is a face-centered crop of that
+              photo so the face occupies >60% of image width (YouCam Skin
+              Analysis requirement); no other edits.
+License:      Unsplash License (https://unsplash.com/license)
+              Free to use under the Unsplash License for commercial and
+              non-commercial purposes. No permission required. Attribution
+              appreciated but not required. Do not sell unaltered copies of
+              the photo as a competing stock service.
+Downloaded:   2026-10-19 (Europe/Moscow)
+Purpose:      YouCam Perfect Corp skin-analysis + makeup VTO live smoke for
+              the SkinCart hackathon project. Not used to imply endorsement
+              by the photographer or Unsplash.
