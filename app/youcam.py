@@ -106,24 +106,32 @@ class YouCamClient:
 
     # ---------- public API ----------
     def skin_analysis(self, image: bytes | None = None, url: str | None = None,
-                      actions: list[str] | None = None, content_type: str = "image/jpeg") -> list[SkinConcern]:
+                      actions: list[str] | None = None, content_type: str = "image/jpeg",
+                      file_id: str | None = None) -> list[SkinConcern]:
+        """Score each requested concern. Pass ``file_id`` to reuse an uploaded image (no second upload).
+
+        The live API also returns helper items (``all``, ``skin_age``, ``resize_image``) next to the
+        concerns; only the requested concern types are kept so they never show up as 0/100 "concerns".
+        """
         actions = actions or SD_ACTIONS
         if self.mock:
             return _mock_skin(image or (url or "").encode(), actions)
-        file_id = self.upload(image, content_type) if image and not url else None
+        if not file_id and image and not url:
+            file_id = self.upload(image, content_type)
         data = self._run_task("skin-analysis", {**self._src(file_id, url), "dst_actions": actions,
                                                 "miniserver_args": {"enable_mask_overlay": True},
                                                 "format": "json"})
         out = (data.get("results") or {}).get("output") or []
         return [SkinConcern(o["type"], int(o.get("ui_score", 0)), float(o.get("raw_score", 0)),
-                            list(o.get("mask_urls") or [])) for o in out]
+                            list(o.get("mask_urls") or [])) for o in out if o.get("type") in actions]
 
     def makeup_vto(self, effects: list[dict], image: bytes | None = None, url: str | None = None,
-                   content_type: str = "image/jpeg") -> str:
+                   content_type: str = "image/jpeg", file_id: str | None = None) -> str:
         """Apply makeup effects (lip_color, foundation, blush, ...); returns result image URL (or data URI in mock)."""
         if self.mock:
             return _mock_vto(effects)
-        file_id = self.upload(image, content_type) if image and not url else None
+        if not file_id and image and not url:
+            file_id = self.upload(image, content_type)
         data = self._run_task("makeup-vto", {**self._src(file_id, url), "effects": effects, "version": "1.0"})
         res = data.get("results")
         if isinstance(res, dict) and res.get("url"):

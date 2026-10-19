@@ -57,3 +57,10 @@ def test_telegram_flow_offline():
     assert "Order #" in done
     leads = client.get("/leads").json()["leads"]
     assert any(x["source"] == "telegram" and x["extra"]["telegram_chat_id"] == 777 for x in leads)
+
+
+def test_sample_photo_and_score_fields():
+    r = client.get("/sample.jpg")
+    assert r.status_code == 200 and r.headers["content-type"] == "image/jpeg" and r.content[:2] == b"\xff\xd8"
+    scan = client.post("/analyze", json={"image_base64": base64.b64encode(r.content).decode()}).json()
+    assert 0 < scan["skin_score"] <= 100 and all("label" in x for x in scan["scores"])

@@ -13,6 +13,19 @@ Small cosmetics shops in Central Asia/CIS sell mostly through Telegram and Insta
 5. "Order" → contact → saved as a **LeadFlow lead** (normalized, de-duplicated, scored, with `skin_profile` + `basket`)
    → **n8n** notifies the shop owner and sends a 14-day "re-scan your skin" follow-up.
 
+## Screenshots (live YouCam API, 19 Oct 2026)
+
+Taken from the running app with a real `YOUCAM_API_KEY` and a licensed stock portrait
+(Jake Nackos / Unsplash, see `docs/stock-face/`).
+
+| Skin snapshot | YouCam overlay masks |
+|---|---|
+| ![Skin analysis](docs/screenshots/03-skin-analysis.png) | ![Overlays](docs/screenshots/04-analysis-overlays.png) |
+| **Makeup try-on (before / after)** | **Routine + basket** |
+| ![Try-on](docs/screenshots/06-tryon-rose.png) | ![Routine](docs/screenshots/05-routine-basket.png) |
+| **Upload + scan** | **Order saved as a lead** |
+| ![Upload](docs/screenshots/02-upload-scanning.png) | ![Order](docs/screenshots/08-order-placed.png) |
+
 ## Architecture
 
 ```
@@ -26,14 +39,16 @@ Web demo ──────┘         │
 ```
 
 Without `YOUCAM_API_KEY` (or with `YOUCAM_MOCK=1`) the client returns deterministic mock scores and a synthetic
-SVG try-on preview — tests and demos run offline. Results are cached per image hash so re-scans cost 0 units.
+SVG try-on preview — tests and demos run offline. Results are cached per image hash so re-scans cost 0 units, and
+each photo is uploaded once: its `file_id` is reused by every try-on. `GET /sample.jpg` serves the licensed stock
+portrait behind the "Use sample photo" button.
 
 ## Run
 
 ```bash
 cp .env.example .env               # optional: YOUCAM_API_KEY, TELEGRAM_BOT_TOKEN
 python -m venv .venv && .venv/bin/pip install -r requirements-dev.txt
-.venv/bin/pytest -q                # 12 tests (offline mock)
+.venv/bin/pytest -q                # 15 tests (offline mock)
 .venv/bin/python serve.py          # http://localhost:8080  (mock mode if no key)
 docker compose up --build          # app :8080 + n8n :5678 (import n8n/skincart-orders.json)
 ```
@@ -77,7 +92,8 @@ Never commit `.env` or the API key.
 - Devpost write-up: [`SUBMISSION.md`](SUBMISSION.md)
 - Demo script: [`docs/video-script.md`](docs/video-script.md)
 - Slides PDF: [`docs/slides.pdf`](docs/slides.pdf) · cover: [`docs/cover.png`](docs/cover.png)
-- Draft demo video: [`docs/demo-draft.mp4`](docs/demo-draft.mp4) (mock mode, synthetic face — pending user review)
+- Demo video draft (live run): [`docs/demo-live-draft.mp4`](docs/demo-live-draft.mp4) (1:42; script [`docs/video-script-live.md`](docs/video-script-live.md)). Older mock draft: `docs/demo-draft.mp4`
+- Screenshots of the live run: [`docs/screenshots/`](docs/screenshots/)
 - Live YouCam proof: [`docs/live-proof.md`](docs/live-proof.md) (2026-10-19, licensed Unsplash stock face)
 
 

@@ -15,6 +15,7 @@ WORKDIR /srv
 COPY --from=build /srv/venv /srv/venv
 COPY app ./app
 COPY VERSION .
+COPY docs/stock-face ./docs/stock-face
 COPY serve.py .
 EXPOSE 8080
 ENTRYPOINT ["python", "serve.py"]

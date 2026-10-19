@@ -22,7 +22,11 @@ LABELS = {
     "eye_bag": "puffy eyes",
     "firmness": "loss of firmness",
 }
-CONCERN_THRESHOLD = 70  # ui_score below this = worth treating
+CONCERN_THRESHOLD = 80  # ui_score below this = worth caring for (<50 high, <70 medium, <80 mild / maintenance)
+
+
+def severity(ui_score: int) -> str:
+    return "high" if ui_score < 50 else "medium" if ui_score < 70 else "mild"
 
 
 def concerns(scores: list[SkinConcern], top: int = 3) -> list[dict]:
@@ -32,14 +36,20 @@ def concerns(scores: list[SkinConcern], top: int = 3) -> list[dict]:
             "type": s.type,
             "label": LABELS.get(s.type, s.type),
             "ui_score": s.ui_score,
-            "severity": "high" if s.ui_score < 50 else "medium",
+            "severity": severity(s.ui_score),
         }
         for s in worst
     ]
 
 
+def skin_score(scores: list[SkinConcern]) -> int:
+    """Overall 0-100 score: mean ui_score over the analysed concerns."""
+    vals = [s.ui_score for s in scores if s.type in LABELS]
+    return round(sum(vals) / len(vals)) if vals else 0
+
+
 def recommend(scores: list[SkinConcern], limit: int = 4) -> list[dict]:
-    """Weight each product by how badly it's needed: sum of (100 - ui_score) over the concerns it targets."""
+    """Weight each product by how badly it's needed: sum of (threshold - ui_score) over the concerns it targets."""
     need = {s.type: max(0, CONCERN_THRESHOLD - s.ui_score) for s in scores}
     ranked = []
     for p in CATALOG:
@@ -74,7 +84,9 @@ def recommend(scores: list[SkinConcern], limit: int = 4) -> list[dict]:
 
 
 def vto_products() -> list[dict]:
-    return [{"sku": p["sku"], "name": p["name"], "price": p["price"]} for p in CATALOG if p.get("vto")]
+    return [{"sku": p["sku"], "name": p["name"], "price": p["price"], "kind": p["vto"]["category"],
+             "swatch": (p["vto"].get("palettes") or [{}])[0].get("color", "#c2185b")}
+            for p in CATALOG if p.get("vto")]
 
 
 def get_product(sku: str) -> dict | None:

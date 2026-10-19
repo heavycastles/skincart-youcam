@@ -51,9 +51,29 @@ Earlier attempts with the uncropped Unsplash download returned `error_src_face_t
 (face width must be >60% of image width). After the face crop, both skin-analysis and
 makeup-vto succeeded on the first valid upload.
 
+## Live web UI run (screenshots + video source)
+
+**When:** 2026-10-19 ~20:45 MSK · server `uvicorn app.main:app` with the key from local `.env`, `YOUCAM_MOCK` unset
+(badge "YouCam API · LIVE"). Browser: Chrome driven by Playwright on a private virtual display.
+
+| Step | Result |
+|------|--------|
+| "Use sample photo" → `POST /analyze` | 1 File API upload + 1 `skin-analysis` task, ~5 s. Same scores as the 16:43 smoke run (pore 70, moisture 73, eye_bag 76, wrinkle 77, firmness 78 … acne 99); skin score 84; focus areas visible pores / dryness / puffy eyes (mild) |
+| Overlay masks | 3 mask images from the API response shown under "Where YouCam sees it" |
+| Try-on `SC-LIP-10` (Velvet Matte Rose) | 1 `makeup-vto` task, ~7 s, reused the scan's `file_id` (no second upload) |
+| Try-on `SC-LIP-11` (Glossy Tint Coral) | 1 `makeup-vto` task, ~7 s |
+| Order | Lead #1, 7 items, $114.00, skin profile attached |
+| Total | 16 HTTP requests to the YouCam API (incl. presigned PUT and status polls); `/version` → `api_calls: 16` |
+
+Outputs: `docs/screenshots/*.png` (real page screenshots) and `docs/demo-live-draft.mp4` (built from the screen
+recording of this run). Later re-reads of the same photo were served from the in-process cache (0 extra requests).
+
+Fixes found by the live data (in code, with tests): the response's helper items `all` / `skin_age` /
+`resize_image` (ui_score 0) are no longer treated as concerns; scores below 80 now get a "mild" tier so a healthy
+face still gets a useful routine.
+
 ## Notes
 
 - Default app mode remains mock when `YOUCAM_MOCK=1` or no key (tests stay offline).
-- Demo video `docs/demo-draft.mp4` is still the older mock draft — re-record for Devpost
-  with this live path once Render + public video are ready.
-- Do not commit `.env` or API keys. Mask URLs in the JSON expire (~2h signed).
+- The older `docs/demo-draft.mp4` is the mock draft; the live draft is `docs/demo-live-draft.mp4`.
+- Do not commit `.env` or API keys. Signed result/mask URLs expire and are not stored in the repo.

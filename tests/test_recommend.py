@@ -20,3 +20,12 @@ def test_healthy_skin_still_gets_spf_only():
 def test_concerns_sorted_worst_first():
     c = rec.concerns([s("acne", 60), s("pore", 45), s("redness", 90)])
     assert [x["type"] for x in c] == ["pore", "acne"] and c[0]["severity"] == "high"
+
+
+def test_mild_tier_builds_maintenance_routine():
+    scores = [s("pore", 70), s("moisture", 73), s("eye_bag", 76), s("wrinkle", 77), s("acne", 99)]
+    c = rec.concerns(scores)
+    assert [x["type"] for x in c] == ["pore", "moisture", "eye_bag"] and {x["severity"] for x in c} == {"mild"}
+    basket = rec.recommend(scores)
+    assert len(basket) >= 3 and basket[-1]["sku"] == "SC-SPF-09"
+    assert rec.skin_score(scores) == 79

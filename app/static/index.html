@@ -1,39 +1,236 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>SkinCart - selfie to basket with YouCam AI</title>
+<title>SkinCart — selfie to basket with YouCam AI</title>
 <style>
-body{font-family:system-ui,sans-serif;max-width:860px;margin:0 auto;padding:16px;background:#fff7f5;color:#2b2b2b}
-h1{color:#c2185b;margin-bottom:0}.sub{color:#777;margin-top:4px}.card{background:#fff;border-radius:14px;padding:16px;margin:14px 0;box-shadow:0 2px 10px #0001}
-button{background:#c2185b;color:#fff;border:0;border-radius:10px;padding:10px 16px;cursor:pointer;font-size:15px}button.alt{background:#fff;color:#c2185b;border:1px solid #c2185b}
-.bar{height:10px;background:#eee;border-radius:5px;overflow:hidden}.bar>i{display:block;height:100%;background:linear-gradient(90deg,#e57373,#81c784)}
-.row{display:flex;gap:14px;flex-wrap:wrap}.row>*{flex:1 1 240px}img.prev{max-width:100%;border-radius:12px}.prod{border-bottom:1px solid #eee;padding:8px 0}
-.tag{font-size:12px;background:#fde4ec;color:#c2185b;border-radius:6px;padding:2px 6px}input{padding:9px;border:1px solid #ccc;border-radius:8px;width:100%;box-sizing:border-box;margin:4px 0}
+:root{--ink:#1d1a22;--muted:#6f6878;--line:#eee6ea;--bg:#fbf7f5;--card:#fff;--rose:#c2185b;--rose2:#e8507f;--blush:#fde8ef;
+--ok:#1f9d6b;--mid:#e0a020;--hi:#d6455d;--shadow:0 1px 2px rgba(40,10,30,.04),0 8px 28px rgba(80,20,50,.07);--r:18px}
+*{box-sizing:border-box}[hidden]{display:none!important}html{scroll-behavior:smooth}
+body{margin:0;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--ink);background:var(--bg);
+ background-image:radial-gradient(1200px 500px at 85% -10%,#ffe1ea 0,transparent 60%),radial-gradient(900px 500px at -10% 10%,#fff0e6 0,transparent 60%);
+ -webkit-font-smoothing:antialiased;font-size:15px;line-height:1.5}
+.serif{font-family:Fraunces,"Playfair Display",Georgia,serif}
+a{color:var(--rose)}
+nav{position:sticky;top:0;z-index:20;backdrop-filter:blur(10px);background:rgba(251,247,245,.82);border-bottom:1px solid var(--line)}
+.wrap{max-width:1180px;margin:0 auto;padding:0 28px}
+.navin{display:flex;align-items:center;gap:14px;height:64px}
+.logo{display:flex;align-items:center;gap:10px;font-weight:700;font-size:19px;letter-spacing:-.01em}
+.mark{width:32px;height:32px;border-radius:10px;background:linear-gradient(135deg,var(--rose2),var(--rose));display:grid;place-items:center;box-shadow:0 4px 14px rgba(194,24,91,.35)}
+.navsp{flex:1}.navlink{color:var(--muted);text-decoration:none;font-size:14px;margin-right:6px}
+.badge{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;font-weight:600;padding:6px 11px;border-radius:999px;background:#fff;border:1px solid var(--line)}
+.dot{width:8px;height:8px;border-radius:50%;background:#bbb}.live .dot{background:var(--ok);box-shadow:0 0 0 4px rgba(31,157,107,.15);animation:pulse 1.6s infinite}
+@keyframes pulse{50%{box-shadow:0 0 0 7px rgba(31,157,107,.05)}}
+.hero{display:grid;grid-template-columns:1.1fr .9fr;gap:44px;align-items:center;padding:30px 0 26px}
+.eyebrow{display:inline-block;font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--rose);background:var(--blush);padding:6px 11px;border-radius:999px}
+h1{font-size:48px;line-height:1.04;letter-spacing:-.025em;margin:16px 0 14px;font-weight:600}
+h1 em{font-style:italic;color:var(--rose)}
+.lead{color:var(--muted);font-size:17px;max-width:520px;margin:0 0 24px}
+.btn{display:inline-flex;align-items:center;gap:9px;border:0;border-radius:12px;padding:13px 20px;font:600 15px Inter,sans-serif;cursor:pointer;transition:.18s}
+.btn.pri{background:linear-gradient(135deg,var(--rose2),var(--rose));color:#fff;box-shadow:0 6px 18px rgba(194,24,91,.3)}
+.btn.pri:hover{transform:translateY(-1px)}.btn.sec{background:#fff;color:var(--ink);border:1px solid var(--line)}
+.btn:disabled{opacity:.55;cursor:default;transform:none}
+.cta{display:flex;gap:12px;flex-wrap:wrap}.fine{font-size:12.5px;color:var(--muted);margin-top:14px}
+.steps{display:flex;gap:8px;margin-top:22px;flex-wrap:wrap}
+.step{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--muted);background:#fff;border:1px solid var(--line);border-radius:999px;padding:6px 12px 6px 6px}
+.step b{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;background:#f3edf0;font-size:12px}
+.step.on{color:var(--ink);border-color:#f3c3d3}.step.on b{background:var(--rose);color:#fff}
+.step.done b{background:var(--ok);color:#fff}
+.stage{position:relative;background:var(--card);border-radius:28px;box-shadow:var(--shadow);padding:14px;border:1px solid var(--line)}
+.drop{position:relative;height:min(520px,calc(100vh - 150px));min-height:380px;border-radius:20px;overflow:hidden;background:linear-gradient(160deg,#fff5f8,#fdeee8);display:grid;place-items:center;text-align:center;color:var(--muted);border:1.5px dashed #efc6d4;cursor:pointer}
+.drop.has{border:0}.drop img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.drop .ph svg{margin-bottom:10px}
+.scan{position:absolute;inset:0;display:none;pointer-events:none}
+.scanning .scan{display:block}
+.scan:before{content:"";position:absolute;left:0;right:0;height:120px;background:linear-gradient(180deg,transparent,rgba(232,80,127,.35),transparent);animation:sweep 1.6s ease-in-out infinite}
+.scan:after{content:"";position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.18) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.18) 1px,transparent 1px);background-size:28px 28px}
+@keyframes sweep{0%{top:-120px}100%{top:100%}}
+.chip{position:absolute;left:24px;bottom:24px;right:24px;background:rgba(20,10,18,.72);color:#fff;border-radius:14px;padding:12px 14px;font-size:13.5px;display:none;align-items:center;gap:10px;backdrop-filter:blur(6px)}
+.scanning .chip,.chip.show{display:flex}
+.spin{width:16px;height:16px;border-radius:50%;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;animation:rot .8s linear infinite;flex:none}
+@keyframes rot{to{transform:rotate(360deg)}}
+.credit{font-size:11px;color:var(--muted);text-align:right;margin:8px 4px 0}
+section.res{display:none;padding:10px 0 60px}section.res.show{display:block;animation:up .5s ease both}
+@keyframes up{from{opacity:0;transform:translateY(14px)}}
+.grid{display:grid;grid-template-columns:1fr 360px;gap:24px;align-items:start}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);padding:22px;margin-bottom:24px}
+.card h2{font-size:24px;margin:0 0 4px;font-weight:600;letter-spacing:-.01em}.card .sub{color:var(--muted);margin:0 0 18px;font-size:14px}
+.hd{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.pill{font-size:12px;font-weight:600;padding:4px 10px;border-radius:999px;background:#f3edf0;color:var(--muted);white-space:nowrap}
+.pill.live{background:#e6f6ef;color:var(--ok)}
+.summary{display:grid;grid-template-columns:180px 1fr;gap:26px;align-items:center;margin-bottom:22px}
+.ring{position:relative;width:170px;height:170px}.ring svg{transform:rotate(-90deg)}
+.ring .v{position:absolute;inset:0;display:grid;place-items:center;text-align:center}
+.ring .v strong{font-size:46px;line-height:1;font-weight:600}.ring .v span{display:block;font-size:12px;color:var(--muted);margin-top:4px;letter-spacing:.06em;text-transform:uppercase}
+.focus{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px}
+.fc{border-radius:14px;padding:10px 14px;background:#fff7f9;border:1px solid #f6d6e0;min-width:150px}
+.fc small{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.08em;font-weight:700}
+.fc b{font-size:16px}.sev-high{color:var(--hi)}.sev-medium{color:var(--mid)}.sev-mild{color:#c77d9a}
+.tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.tile{border:1px solid var(--line);border-radius:14px;padding:12px 13px}
+.tile .t{display:flex;justify-content:space-between;font-size:13px;color:var(--muted)}.tile .t b{color:var(--ink);font-size:15px}
+.bar{height:6px;border-radius:9px;background:#f2ecef;margin-top:9px;overflow:hidden}.bar i{display:block;height:100%;border-radius:9px;width:0;transition:width 1.1s cubic-bezier(.2,.8,.2,1)}
+.masks{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:18px}
+.mask{position:relative;border-radius:14px;overflow:hidden;aspect-ratio:1;background:#f6eef1}
+.mask img{width:100%;height:100%;object-fit:cover;display:block}.mask span{position:absolute;left:10px;bottom:10px;background:rgba(20,10,18,.7);color:#fff;font-size:12px;font-weight:600;border-radius:8px;padding:4px 8px}
+.prods{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.prod{display:flex;gap:14px;border:1px solid var(--line);border-radius:16px;padding:14px;transition:.2s}
+.prod.in{border-color:#f0b9cb;background:#fffafb}
+.pic{flex:none;width:58px;height:74px;border-radius:12px;display:grid;place-items:end center;padding-bottom:8px;position:relative}
+.pic:before{content:"";width:26px;height:46px;border-radius:7px 7px 5px 5px;background:rgba(255,255,255,.85);box-shadow:inset 0 -8px 0 rgba(0,0,0,.06)}
+.pic:after{content:"";position:absolute;top:10px;width:14px;height:8px;border-radius:3px;background:rgba(255,255,255,.95)}
+.prod h4{margin:0;font-size:15px;line-height:1.3}.prod p{margin:4px 0 8px;font-size:12.5px;color:var(--muted)}
+.prow{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.cat{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--rose)}
+.price{font-weight:700}.add{border:1px solid var(--line);background:#fff;border-radius:10px;padding:6px 11px;font:600 12.5px Inter;cursor:pointer}
+.prod.in .add{background:var(--ink);color:#fff;border-color:var(--ink)}
+.vto{display:grid;grid-template-columns:1fr 260px;gap:20px;align-items:start}
+.cmp{position:relative;aspect-ratio:1;border-radius:18px;overflow:hidden;background:#f6eef1;user-select:none}
+.cmp img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.cmp .after{clip-path:inset(0 0 0 50%)}.cmp .handle{position:absolute;top:0;bottom:0;left:50%;width:2px;background:#fff;box-shadow:0 0 12px rgba(0,0,0,.3)}
+.cmp .handle:after{content:"";position:absolute;top:50%;left:-15px;width:32px;height:32px;margin-top:-16px;border-radius:50%;background:#fff;box-shadow:0 4px 12px rgba(0,0,0,.25)}
+.cmp .lbl{position:absolute;top:12px;font-size:11.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#fff;background:rgba(20,10,18,.6);padding:4px 9px;border-radius:8px}
+.cmp input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:ew-resize}
+.cmp .empty{position:absolute;inset:0;display:grid;place-items:center;color:var(--muted);font-size:14px;text-align:center;padding:30px}
+.sw{display:flex;align-items:center;gap:12px;width:100%;text-align:left;border:1px solid var(--line);background:#fff;border-radius:14px;padding:11px 12px;margin-bottom:10px;cursor:pointer;font:500 14px Inter}
+.sw i{width:30px;height:30px;border-radius:50%;flex:none;box-shadow:inset 0 0 0 3px rgba(255,255,255,.7),0 0 0 1px var(--line)}
+.sw.on{border-color:var(--rose);box-shadow:0 0 0 3px var(--blush)}.sw small{display:block;color:var(--muted);font-size:12px}
+.side{position:sticky;top:84px}
+.cart h3{margin:0 0 12px;font-size:20px}.line{display:flex;justify-content:space-between;gap:10px;font-size:14px;padding:9px 0;border-bottom:1px dashed var(--line)}
+.tot{display:flex;justify-content:space-between;font-size:18px;font-weight:700;margin:14px 0 16px}
+input.f{width:100%;padding:12px 13px;border:1px solid var(--line);border-radius:12px;font:14px Inter;margin-bottom:10px;background:#fffdfd}
+.ok{display:none;margin-top:14px;border-radius:14px;padding:14px;background:#e9f7f0;color:#13583d;font-size:14px}.ok.show{display:block;animation:up .4s both}
+.meta{font-size:12px;color:var(--muted);margin-top:10px}
+.api{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.api span{font:600 11.5px ui-monospace,Menlo,monospace;background:#f6f1f4;border-radius:8px;padding:4px 8px;color:#6b3550}
+footer{border-top:1px solid var(--line);padding:22px 0 30px;color:var(--muted);font-size:12.5px}
+.err{color:var(--hi);font-weight:600}
+@media(max-width:960px){.hero,.grid,.vto{grid-template-columns:1fr}.tiles{grid-template-columns:repeat(2,1fr)}.prods{grid-template-columns:1fr}h1{font-size:40px}.side{position:static}.summary{grid-template-columns:1fr}}
 </style></head><body>
-<h1>SkinCart 💄</h1><p class="sub">Selfie → <b>YouCam AI Skin Analysis</b> → a routine from the shop → <b>makeup try-on</b> → order. Same flow runs in our Telegram bot.</p>
-<div class="card"><input type="file" id="file" accept="image/*" capture="user"> <button onclick="analyze()">Analyze my skin</button>
-<span id="mode" class="tag"></span><p id="status"></p></div>
-<div id="out" style="display:none">
- <div class="row"><div class="card"><img id="preview" class="prev" alt="selfie"></div>
- <div class="card"><h3>Skin snapshot</h3><div id="scores"></div></div></div>
- <div class="card"><h3>Your routine</h3><div id="basket"></div><p><b>Total: $<span id="total"></span></b></p></div>
- <div class="card"><h3>Virtual try-on</h3><div id="tryon"></div><img id="vto" class="prev" style="max-width:280px;margin-top:10px"></div>
- <div class="card"><h3>Order</h3><input id="name" placeholder="Name"><input id="phone" placeholder="Phone, e.g. +998 90 123 45 67">
- <button onclick="order()">Place order</button><p id="ordered"></p></div>
-</div>
+<nav><div class="wrap navin">
+ <div class="logo"><span class="mark"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round"><path d="M12 3c4 4 6 7 6 10a6 6 0 0 1-12 0c0-3 2-6 6-10z"/></svg></span>SkinCart</div>
+ <span class="navsp"></span><a class="navlink" href="#how">How it works</a>
+ <span id="mode" class="badge"><span class="dot"></span><span id="modeTxt">YouCam API</span></span>
+</div></nav>
+<main class="wrap">
+ <div class="hero">
+  <div>
+   <span class="eyebrow">AI skin concierge for beauty shops</span>
+   <h1 class="serif">From one selfie to a <em>basket</em> that fits your skin.</h1>
+   <p class="lead">SkinCart scores 12 skin concerns with <b>YouCam AI Skin Analysis</b>, builds a routine from the shop's own catalog, and lets customers <b>try on makeup</b> before they order — on the web or in Telegram.</p>
+   <div class="cta">
+    <button class="btn pri" id="pick"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h3l2-3h6l2 3h3v13H4z"/><circle cx="12" cy="13" r="4"/></svg>Upload a selfie</button>
+    <button class="btn sec" id="sample">Use sample photo</button>
+   </div>
+   <input type="file" id="file" accept="image/*" capture="user" hidden>
+   <p class="fine">Photos are sent only to the YouCam API for analysis. Results are cached per image, so a re-scan costs nothing.</p>
+   <div class="steps" id="steps"><span class="step on" data-s="1"><b>1</b>Selfie</span><span class="step" data-s="2"><b>2</b>Skin analysis</span><span class="step" data-s="3"><b>3</b>Try-on</span><span class="step" data-s="4"><b>4</b>Checkout</span></div>
+  </div>
+  <div>
+   <div class="stage"><div class="drop" id="drop">
+     <div class="ph"><svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#d987a4" stroke-width="1.6"><circle cx="12" cy="9" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg><div><b>Drop a selfie here</b><br><small>front-facing, good light, no filters</small></div></div>
+     <img id="preview" alt="" hidden><div class="scan"></div>
+     <div class="chip" id="chip"><span class="spin"></span><span id="chipTxt">Analyzing…</span></div>
+   </div></div>
+   <div class="credit" id="credit" hidden>Sample photo: Jake Nackos / Unsplash</div>
+  </div>
+ </div>
+ <p id="status" class="err"></p>
+
+ <section class="res" id="res"><div class="grid"><div>
+  <div class="card">
+   <div class="hd"><div><h2 class="serif">Your skin snapshot</h2><p class="sub" id="snapSub">12 concerns scored by YouCam AI · higher is healthier</p></div><span class="pill" id="srcPill">YouCam Skin Analysis</span></div>
+   <div class="summary">
+    <div class="ring"><svg width="170" height="170"><circle cx="85" cy="85" r="74" stroke="#f3eaee" stroke-width="13" fill="none"/><circle id="arc" cx="85" cy="85" r="74" stroke="url(#g)" stroke-width="13" fill="none" stroke-linecap="round" stroke-dasharray="465" stroke-dashoffset="465" style="transition:stroke-dashoffset 1.3s cubic-bezier(.2,.8,.2,1)"/><defs><linearGradient id="g"><stop offset="0" stop-color="#e8507f"/><stop offset="1" stop-color="#c2185b"/></linearGradient></defs></svg>
+     <div class="v"><div><strong id="score">0</strong><span>skin score</span></div></div></div>
+    <div><div style="font-weight:600">Focus areas</div><p class="sub" style="margin:2px 0 6px">The lowest scores drive the routine below.</p><div class="focus" id="focus"></div></div>
+   </div>
+   <div class="tiles" id="tiles"></div>
+   <div id="maskWrap" hidden><div style="font-weight:600;margin-top:20px">Where YouCam sees it</div><div class="masks" id="masks"></div></div>
+  </div>
+  <div class="card">
+   <div class="hd"><div><h2 class="serif">Your routine</h2><p class="sub">One product per step, matched to your focus areas — always with SPF.</p></div><span class="pill" id="routinePill"></span></div>
+   <div class="prods" id="prods"></div>
+  </div>
+  <div class="card" id="tryCard">
+   <div class="hd"><div><h2 class="serif">Virtual try-on</h2><p class="sub">Shades from the shop, rendered on your photo by YouCam AI Makeup VTO. Drag to compare.</p></div><span class="pill" id="vtoPill">Makeup VTO</span></div>
+   <div class="vto"><div class="cmp" id="cmp"><img id="before" alt=""><img id="after" class="after" alt="" hidden><div class="handle" id="handle" hidden></div>
+     <span class="lbl" style="left:12px">Before</span><span class="lbl" id="afterLbl" style="right:12px" hidden>After</span>
+     <div class="empty" id="cmpEmpty">Pick a shade to see it on your photo</div><input type="range" id="slider" min="0" max="100" value="50" hidden></div>
+    <div id="shades"></div></div>
+  </div>
+ </div>
+ <aside class="side"><div class="card cart">
+  <h3 class="serif">Your basket</h3><div id="lines"></div>
+  <div class="tot"><span>Total</span><span id="total">$0.00</span></div>
+  <input class="f" id="name" placeholder="Name" value=""><input class="f" id="phone" placeholder="Phone, e.g. +998 90 123 45 67">
+  <button class="btn pri" id="orderBtn" style="width:100%;justify-content:center">Place order</button>
+  <div class="ok" id="ok"></div>
+  <div class="meta">Orders land in the shop's lead inbox (normalized, de-duplicated, scored) and trigger an n8n alert plus a day-14 re-scan reminder.</div>
+ </div>
+ <div class="card"><div style="font-weight:600">Under the hood</div><p class="sub" style="margin:4px 0 0" id="hoodTxt">YouCam API calls in this session</p>
+  <div class="api"><span>POST /s2s/v2.0/file</span><span>task/skin-analysis</span><span>task/makeup-vto</span></div></div>
+ </aside></div></section>
+
+ <section id="how" class="card" style="margin:10px 0 40px">
+  <h2 class="serif">How it works</h2>
+  <div class="tiles" style="margin-top:14px">
+   <div class="tile"><b>1 · Upload</b><p class="sub" style="margin:6px 0 0">YouCam File API stores the selfie once; every task reuses the same file id.</p></div>
+   <div class="tile"><b>2 · Analyze</b><p class="sub" style="margin:6px 0 0">Skin Analysis scores 12 concerns and returns overlay masks.</p></div>
+   <div class="tile"><b>3 · Match</b><p class="sub" style="margin:6px 0 0">Need-weighted matcher picks one product per step from the catalog.</p></div>
+   <div class="tile"><b>4 · Try &amp; order</b><p class="sub" style="margin:6px 0 0">Makeup VTO renders shades; the order becomes a scored lead.</p></div>
+  </div>
+ </section>
+</main>
+<footer><div class="wrap">SkinCart · built on the YouCam AI Skin Analysis and Makeup VTO APIs · same flow runs in the shop's Telegram bot · MIT</div></footer>
 <script>
-let scan=null;const $=id=>document.getElementById(id);
-fetch('/version').then(r=>r.json()).then(v=>$('mode').textContent='YouCam: '+v.youcam.mode);
-async function post(url,body){const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
- const j=await r.json();if(!r.ok)throw new Error(j.detail||r.status);return j}
-async function analyze(){const f=$('file').files[0];if(!f){$('status').textContent='Pick a selfie first';return}
- $('status').textContent='Analyzing with YouCam AI…';const b64=await new Promise(res=>{const fr=new FileReader();fr.onload=()=>res(fr.result);fr.readAsDataURL(f)});
- try{scan=await post('/analyze',{image_base64:b64,content_type:f.type||'image/jpeg'})}catch(e){$('status').textContent='Error: '+e.message;return}
- $('status').textContent=scan.cached?'Loaded from cache (0 units used)':'Done';$('preview').src=b64;$('out').style.display='block';
- $('scores').innerHTML=scan.scores.sort((a,b)=>a.ui_score-b.ui_score).map(s=>`<div>${s.type.replace('_v2','')} <b>${s.ui_score}</b><div class="bar"><i style="width:${s.ui_score}%"></i></div></div>`).join('');
- $('basket').innerHTML=scan.basket.map(p=>`<div class="prod"><b>${p.name}</b> <span class="tag">${p.category}</span> $${p.price}<br><small>${p.reason}</small></div>`).join('');
- $('total').textContent=scan.basket.reduce((a,p)=>a+p.price,0).toFixed(2);
- $('tryon').innerHTML=scan.tryon.map(p=>`<button class="alt" onclick="tryOn('${p.sku}')">Try ${p.name}</button> `).join('')}
-async function tryOn(sku){$('vto').alt='rendering…';try{const r=await post('/tryon',{scan_id:scan.scan_id,sku});$('vto').src=r.image_url}catch(e){$('vto').alt=e.message}}
-async function order(){try{const r=await post('/orders',{scan_id:scan.scan_id,name:$('name').value||'Guest',phone:$('phone').value,skus:scan.basket.map(p=>p.sku),source:'web'});
- $('ordered').textContent=`✅ Order saved as LeadFlow lead #${r.lead.id} (score ${r.lead.score}, total $${r.lead.extra.total})`}catch(e){$('ordered').textContent='Error: '+e.message}}
+const $=id=>document.getElementById(id);let scan=null,cart=new Set(),imgSrc=null,busy=false;
+const COLORS={cleanser:['#d9ecf7','#9cc9e6'],serum:['#ffe7c7','#f3b874'],treatment:['#e6dcfb','#a58be6'],eye:['#dff3ea','#87cfae'],moisturizer:['#fde3ea','#ef9ab4'],spf:['#fff4c4','#efcf55'],makeup:['#f9d9df','#c94f6d']};
+const sevColor=v=>v<50?'var(--hi)':v<70?'var(--mid)':v<80?'#d987a4':'var(--ok)';
+fetch('/version').then(r=>r.json()).then(v=>{const live=v.youcam.mode==='live';$('mode').classList.toggle('live',live);$('modeTxt').textContent='YouCam API · '+(live?'LIVE':'mock')});
+async function post(url,body){const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});const j=await r.json();if(!r.ok)throw new Error(j.detail||r.status);return j}
+function step(n){document.querySelectorAll('.step').forEach(e=>{const s=+e.dataset.s;e.classList.toggle('on',s===n);e.classList.toggle('done',s<n)})}
+$('pick').onclick=$('drop').onclick=()=>{if(!busy)$('file').click()};
+$('file').onchange=async()=>{const f=$('file').files[0];if(!f)return;$('credit').hidden=true;
+ const b64=await new Promise(res=>{const fr=new FileReader();fr.onload=()=>res(fr.result);fr.readAsDataURL(f)});run(b64,f.type||'image/jpeg')};
+$('sample').onclick=async()=>{if(busy)return;const b=await (await fetch('/sample.jpg')).blob();$('credit').hidden=false;
+ const b64=await new Promise(res=>{const fr=new FileReader();fr.onload=()=>res(fr.result);fr.readAsDataURL(b)});run(b64,'image/jpeg')};
+async function run(b64,type){busy=true;imgSrc=b64;$('status').textContent='';const pv=$('preview');pv.src=b64;pv.hidden=false;$('drop').classList.add('has','scanning');
+ document.querySelector('.ph').style.display='none';step(2);
+ const msgs=['Uploading to YouCam File API…','Running Skin Analysis · 12 concerns…','Reading pores, texture, moisture…','Building your routine…'];let k=0;$('chipTxt').textContent=msgs[0];
+ const t=setInterval(()=>{k=Math.min(k+1,msgs.length-1);$('chipTxt').textContent=msgs[k]},2200);
+ $('pick').disabled=$('sample').disabled=true;
+ try{scan=await post('/analyze',{image_base64:b64,content_type:type})}catch(e){$('status').textContent='Analysis failed: '+e.message;busy=false;clearInterval(t);$('drop').classList.remove('scanning');$('pick').disabled=$('sample').disabled=false;return}
+ clearInterval(t);$('drop').classList.remove('scanning');$('pick').disabled=$('sample').disabled=false;busy=false;
+ const c=$('chip');c.classList.add('show');c.innerHTML=`<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#7be3b5" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg>`+(scan.cached?'Loaded from cache · 0 units used':`Analyzed in ${(scan.elapsed_ms/1000).toFixed(1)} s · ${scan.mode==='live'?'live YouCam API':'mock mode'}`);
+ render();step(3);hood();setTimeout(()=>$('res').scrollIntoView({behavior:'smooth'}),400)}
+function render(){const live=scan.mode==='live';$('res').classList.add('show');
+ $('srcPill').textContent=live?'Live · YouCam Skin Analysis':'Mock data';$('srcPill').classList.toggle('live',live);
+ $('vtoPill').textContent=live?'Live · YouCam Makeup VTO':'Mock preview';$('vtoPill').classList.toggle('live',live);
+ $('snapSub').textContent=`${scan.scores.length} concerns scored by YouCam AI · higher is healthier`;
+ const sc=scan.skin_score||0;let n=0;const iv=setInterval(()=>{n=Math.min(sc,n+2);$('score').textContent=n;if(n>=sc)clearInterval(iv)},18);
+ requestAnimationFrame(()=>$('arc').style.strokeDashoffset=465*(1-sc/100));
+ $('focus').innerHTML=scan.concerns.length?scan.concerns.map(c=>`<div class="fc"><small class="sev-${c.severity}">${c.severity}</small><b>${c.label}</b> · ${c.ui_score}</div>`).join(''):'<div class="fc"><small class="sev-mild">great</small><b>No concerns</b></div>';
+ const sorted=[...scan.scores].sort((a,b)=>a.ui_score-b.ui_score);
+ $('tiles').innerHTML=sorted.map(s=>`<div class="tile"><div class="t"><span>${s.label}</span><b>${s.ui_score}</b></div><div class="bar"><i data-w="${s.ui_score}" style="background:${sevColor(s.ui_score)}"></i></div></div>`).join('');
+ setTimeout(()=>document.querySelectorAll('.bar i').forEach(i=>i.style.width=i.dataset.w+'%'),60);
+ const masks=scan.concerns.map(c=>({c,s:scan.scores.find(x=>x.type===c.type)})).filter(m=>m.s&&m.s.mask_urls&&m.s.mask_urls.length).slice(0,3);
+ $('maskWrap').hidden=!masks.length;$('masks').innerHTML=masks.map(m=>`<div class="mask"><img src="${m.s.mask_urls[0]}" alt=""><span>${m.c.label}</span></div>`).join('');
+ cart=new Set(scan.basket.map(p=>p.sku));
+ $('routinePill').textContent=`${scan.basket.length} steps`;
+ $('prods').innerHTML=scan.basket.map(p=>{const [a,b]=COLORS[p.category]||COLORS.makeup;return `<div class="prod in" id="p-${p.sku}"><div class="pic" style="background:linear-gradient(160deg,${a},${b})"></div><div style="flex:1"><div class="cat">${p.category}</div><h4>${p.name}</h4><p>${p.reason}</p><div class="prow"><span class="price">$${p.price.toFixed(2)}</span><button class="add" onclick="toggle('${p.sku}')">In basket</button></div></div></div>`}).join('');
+ $('before').src=imgSrc;$('after').hidden=$('handle').hidden=$('afterLbl').hidden=$('slider').hidden=true;$('cmpEmpty').hidden=false;
+ $('shades').innerHTML=scan.tryon.map(p=>`<button class="sw" id="s-${p.sku}" onclick="tryOn('${p.sku}')"><i style="background:${p.swatch}"></i><span>${p.name}<small>$${p.price.toFixed(2)} · ${p.kind.replace('_',' ')}</small></span></button>`).join('');
+ drawCart()}
+const product=sku=>scan.basket.find(p=>p.sku===sku)||scan.tryon.find(p=>p.sku===sku);
+function toggle(sku){cart.has(sku)?cart.delete(sku):cart.add(sku);const el=$('p-'+sku);if(el){el.classList.toggle('in',cart.has(sku));el.querySelector('.add').textContent=cart.has(sku)?'In basket':'Add'}drawCart()}
+function drawCart(){const items=[...cart].map(product).filter(Boolean);$('lines').innerHTML=items.map(p=>`<div class="line"><span>${p.name}</span><b>$${p.price.toFixed(2)}</b></div>`).join('')||'<p class="sub">Basket is empty</p>';
+ $('total').textContent='$'+items.reduce((a,p)=>a+p.price,0).toFixed(2)}
+async function tryOn(sku){document.querySelectorAll('.sw').forEach(e=>e.classList.toggle('on',e.id==='s-'+sku));
+ $('cmpEmpty').hidden=false;$('cmpEmpty').innerHTML='<span><span class="spin" style="border-color:#e8c3d0;border-top-color:#c2185b;display:inline-block;vertical-align:middle"></span>&nbsp; Rendering with YouCam Makeup VTO…</span>';
+ try{const r=await post('/tryon',{scan_id:scan.scan_id,sku});const a=$('after');await new Promise((res,rej)=>{a.onload=res;a.onerror=rej;a.src=r.image_url});
+  a.hidden=$('handle').hidden=$('afterLbl').hidden=$('slider').hidden=false;$('cmpEmpty').hidden=true;setSlider(50);
+  if(!cart.has(sku)){cart.add(sku);drawCart()}step(4);hood()}catch(e){$('cmpEmpty').textContent='Try-on failed: '+(e.message||'image error')}}
+function hood(){fetch('/version').then(r=>r.json()).then(v=>$('hoodTxt').textContent=`${v.youcam.api_calls} YouCam API requests this session · mode ${v.youcam.mode}`)}
+function setSlider(v){$('slider').value=v;$('after').style.clipPath=`inset(0 0 0 ${v}%)`;$('handle').style.left=v+'%'}
+$('slider').oninput=e=>setSlider(e.target.value);
+$('orderBtn').onclick=async()=>{if(!scan)return;try{const r=await post('/orders',{scan_id:scan.scan_id,name:$('name').value||'Guest',phone:$('phone').value,skus:[...cart],source:'web'});
+ const L=r.lead;$('ok').innerHTML=`<b>Order received.</b><br>Lead #${L.id} · score ${L.score} · ${L.extra.basket.length} items · $${L.extra.total.toFixed(2)}<br><small>Skin profile: ${(L.extra.skin_profile||[]).map(c=>c.label).join(', ')||'—'}</small>`;$('ok').classList.add('show')}catch(e){$('ok').innerHTML='<span class="err">'+e.message+'</span>';$('ok').classList.add('show')}};
 </script></body></html>

@@ -8,6 +8,7 @@ import hashlib
 import json
 import os
 import threading
+import time
 import urllib.request
 from pathlib import Path
 
@@ -70,14 +71,20 @@ def analyze_image(image: bytes | None, url: str | None, content_type: str = "ima
     scan_id = hashlib.sha256(image or url.encode()).hexdigest()[:16]
     if scan_id in scans and scans[scan_id].get("result"):
         return scans[scan_id]["result"] | {"cached": True}
+    started, file_id = time.monotonic(), None
     try:
-        scores = youcam.skin_analysis(image=image, url=url, content_type=content_type)
+        if image is not None and not youcam.mock:
+            file_id = youcam.upload(image, content_type)  # one upload, reused by every try-on of this scan
+        scores = youcam.skin_analysis(image=image, url=url, content_type=content_type, file_id=file_id)
     except YouCamError as exc:
         raise HTTPException(502, f"YouCam: {exc}") from exc
     result = {"scan_id": scan_id, "mode": "mock" if youcam.mock else "live",
-              "scores": [s.__dict__ for s in scores], "concerns": rec.concerns(scores),
-              "basket": rec.recommend(scores), "tryon": rec.vto_products(), "cached": False}
-    scans[scan_id] = {"image": image, "url": url, "content_type": content_type, "result": result}
+              "scores": [s.__dict__ | {"label": rec.LABELS.get(s.type, s.type)} for s in scores],
+              "skin_score": rec.skin_score(scores), "concerns": rec.concerns(scores),
+              "basket": rec.recommend(scores), "tryon": rec.vto_products(), "cached": False,
+              "elapsed_ms": round((time.monotonic() - started) * 1000)}
+    scans[scan_id] = {"image": image, "url": url, "content_type": content_type, "file_id": file_id,
+                      "result": result}
     return result
 
 
@@ -89,9 +96,14 @@ def tryon(scan_id: str, sku: str) -> dict:
         raise HTTPException(400, "product has no try-on effect")
     key = f"vto:{sku}"
     if key not in scan:
+        args = {"image": scan["image"], "url": scan["url"], "content_type": scan["content_type"]}
         try:
-            scan[key] = youcam.makeup_vto([product["vto"]], image=scan["image"], url=scan["url"],
-                                          content_type=scan["content_type"])
+            try:
+                scan[key] = youcam.makeup_vto([product["vto"]], file_id=scan.get("file_id"), **args)
+            except YouCamError:
+                if not scan.get("file_id"):
+                    raise
+                scan[key] = youcam.makeup_vto([product["vto"]], **args)  # file expired -> upload again
         except YouCamError as exc:
             raise HTTPException(502, f"YouCam: {exc}") from exc
     return {"scan_id": scan_id, "sku": sku, "image_url": scan[key]}
@@ -134,6 +146,17 @@ def version() -> dict:
 @app.get("/")
 def index() -> FileResponse:
     return FileResponse(Path(__file__).parent / "static" / "index.html")
+
+
+SAMPLE_FACE = Path(__file__).parent.parent / "docs" / "stock-face" / "stock-face.jpg"
+
+
+@app.get("/sample.jpg")
+def sample_face() -> FileResponse:
+    """Licensed stock portrait (Unsplash, Jake Nackos) so visitors can try the flow without a selfie."""
+    if not SAMPLE_FACE.exists():
+        raise HTTPException(404, "sample photo not bundled")
+    return FileResponse(SAMPLE_FACE, media_type="image/jpeg")
 
 
 @app.get("/catalog")

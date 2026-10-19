@@ -86,3 +86,15 @@ def test_auth_header_only_to_youcam(monkeypatch):
     c._request("PUT", "https://s3.example/put", b"x")
     assert sent[0].get_header("Authorization") == "Bearer secret"
     assert sent[1].get_header("Authorization") is None  # never leak the key to the presigned bucket
+
+
+def test_live_helper_outputs_are_dropped_and_file_id_reused(monkeypatch):
+    c = yc.YouCamClient(api_key="k", mock=False, poll_interval=0)
+    fake = FakeHTTP({"output": [{"type": "pore", "ui_score": 70, "raw_score": 56.8, "mask_urls": ["m"]},
+                                {"type": "all", "ui_score": 0}, {"type": "skin_age", "ui_score": 0},
+                                {"type": "resize_image", "ui_score": 0, "mask_urls": ["r"]}]})
+    monkeypatch.setattr(c, "_request", fake)
+    out = c.skin_analysis(image=b"\xff\xd8jpeg", file_id="FID-1")
+    assert [s.type for s in out] == ["pore"]  # live API extras never become 0/100 "concerns"
+    assert not any(u.endswith("/s2s/v2.0/file") for _, u, *_ in fake.calls)  # no second upload
+    assert fake.calls[0][2]["src_file_id"] == "FID-1"
