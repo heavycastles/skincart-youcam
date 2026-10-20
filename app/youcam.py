@@ -42,11 +42,13 @@ class SkinConcern:
 
 class YouCamClient:
     def __init__(self, api_key: str | None = None, base_url: str | None = None, mock: bool | None = None,
-                 poll_interval: float = 2.0, timeout: float = 120.0) -> None:
+                 poll_interval: float = 2.0, timeout: float | None = None) -> None:
         self.api_key = api_key if api_key is not None else os.getenv("YOUCAM_API_KEY", "")
         self.base_url = (base_url or os.getenv("YOUCAM_BASE_URL", DEFAULT_BASE)).rstrip("/")
         env_mock = os.getenv("YOUCAM_MOCK", "").lower() in {"1", "true", "yes"}
         self.mock = (not self.api_key) or env_mock if mock is None else mock
+        if timeout is None:  # serverless hosts (Vercel sets VERCEL=1) stop a function at 60 s: fail cleanly first
+            timeout = float(os.getenv("YOUCAM_TIMEOUT") or (45 if os.getenv("VERCEL") else 120))
         self.poll_interval, self.timeout = poll_interval, timeout
         self.calls = 0
 
@@ -64,7 +66,7 @@ class YouCamClient:
             hdrs["Authorization"] = f"Bearer {self.api_key}"
         req = urllib.request.Request(url, data=data, method=method, headers=hdrs)  # noqa: S310
         try:
-            with urllib.request.urlopen(req, timeout=60) as resp:  # noqa: S310
+            with urllib.request.urlopen(req, timeout=min(60.0, self.timeout)) as resp:  # noqa: S310
                 raw = resp.read()
         except urllib.error.HTTPError as exc:
             detail = exc.read().decode(errors="replace")[:500]

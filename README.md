@@ -2,6 +2,8 @@
 
 **YouCam API Skin AI & eCommerce VTO Hackathon** · MIT · Built by heavycastles
 
+**Live demo:** https://skincart-youcam.vercel.app (no login; press "Use sample photo")
+
 Small cosmetics shops in Central Asia/CIS sell mostly through Telegram and Instagram DMs, and answer
 "what should I buy for my skin?" by hand. **SkinCart** turns that into a bot:
 
@@ -48,7 +50,7 @@ portrait behind the "Use sample photo" button.
 ```bash
 cp .env.example .env               # optional: YOUCAM_API_KEY, TELEGRAM_BOT_TOKEN
 python -m venv .venv && .venv/bin/pip install -r requirements-dev.txt
-.venv/bin/pytest -q                # 15 tests (offline mock)
+.venv/bin/pytest -q                # 19 tests (offline mock)
 .venv/bin/python serve.py          # http://localhost:8080  (mock mode if no key)
 docker compose up --build          # app :8080 + n8n :5678 (import n8n/skincart-orders.json)
 ```
@@ -104,13 +106,25 @@ Never commit `.env` or the API key.
 # VISIBILITY=private ./scripts/publish_github.sh
 ```
 
-## Deploy demo (Render)
+## Deploy demo (Vercel)
 
-Free-tier Blueprint: `render.yaml` (Docker, Oregon, `/healthz`). `YOUCAM_API_KEY` prompted
-(`sync: false`); default `YOUCAM_MOCK=1` for offline demo. Optional Telegram/n8n secrets unset for web-only.
+Hosted on Vercel (Python runtime, FastAPI preset): https://skincart-youcam.vercel.app
 
-1. Push public repo (user approval) → [Render Blueprint](https://dashboard.render.com/select-repo?type=blueprint).
-2. Demo URL → `SUBMISSION.md` Links.
+- `vercel.json` sets the FastAPI framework and `maxDuration: 60` for `app/main.py`; on Vercel the YouCam
+  client stops polling at 45 s (`YOUCAM_TIMEOUT`) so a slow task fails cleanly instead of being killed.
+- `.vercelignore` is an allow-list (app, requirements, VERSION, stock face); `.env`, `.venv`, tests, scripts
+  and videos are never uploaded.
+- `YOUCAM_API_KEY` is a sensitive project env var, `YOUCAM_MOCK=0`.
+- Serverless instances don't share memory, so the browser re-sends the photo / `file_id` with `/tryon` and the
+  skin profile with `/orders`; no second skin analysis is needed. Large phone photos are scaled to 2048 px
+  in the browser to stay under the request-size limit.
+
+```bash
+vercel deploy --prod
+curl https://skincart-youcam.vercel.app/healthz   # {"status":"ok","youcam":"live"}
+```
+
+`render.yaml` / `Dockerfile` remain as an alternative container deploy.
 
 ## License
 

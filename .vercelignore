@@ -1,0 +1,40 @@
+# Vercel upload allow-list: only what the FastAPI function needs at runtime.
+# Entry point is app/main.py (Vercel zero-config), static UI in app/static/,
+# plus the licensed stock portrait served at /sample.jpg.
+/*
+!/app
+!/requirements.txt
+!/VERSION
+!/vercel.json
+!/.python-version
+!/README.md
+!/LICENSE
+!/docs
+/docs/*
+!/docs/stock-face
+/docs/stock-face/*
+!/docs/stock-face/stock-face.jpg
+!/docs/stock-face/ATTRIBUTION.txt
+!/docs/stock-face/LICENSE.txt
+
+# Never upload secrets, even if something above is widened later.
+.env
+.env.*
+**/.env
+**/.env.*
+
+# Local tooling and caches
+.git
+.venv
+venv
+__pycache__
+**/__pycache__
+*.py[cod]
+.pytest_cache
+.ruff_cache
+
+# Heavy media and non-runtime folders
+*.mp4
+tests/
+n8n/
+scripts/

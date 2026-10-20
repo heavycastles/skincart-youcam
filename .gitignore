@@ -6,3 +6,5 @@ __pycache__/
 
 # video build intermediates (final mp4/png/pdf stay tracked)
 docs/video-work/
+.vercel/
+.env.local

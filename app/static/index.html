@@ -181,7 +181,7 @@ footer{border-top:1px solid var(--line);padding:22px 0 30px;color:var(--muted);f
 </main>
 <footer><div class="wrap">SkinCart · built on the YouCam AI Skin Analysis and Makeup VTO APIs · same flow runs in the shop's Telegram bot · MIT</div></footer>
 <script>
-const $=id=>document.getElementById(id);let scan=null,cart=new Set(),imgSrc=null,busy=false;
+const $=id=>document.getElementById(id);let scan=null,cart=new Set(),imgSrc=null,busy=false,calls=0;
 const COLORS={cleanser:['#d9ecf7','#9cc9e6'],serum:['#ffe7c7','#f3b874'],treatment:['#e6dcfb','#a58be6'],eye:['#dff3ea','#87cfae'],moisturizer:['#fde3ea','#ef9ab4'],spf:['#fff4c4','#efcf55'],makeup:['#f9d9df','#c94f6d']};
 const sevColor=v=>v<50?'var(--hi)':v<70?'var(--mid)':v<80?'#d987a4':'var(--ok)';
 fetch('/version').then(r=>r.json()).then(v=>{const live=v.youcam.mode==='live';$('mode').classList.toggle('live',live);$('modeTxt').textContent='YouCam API · '+(live?'LIVE':'mock')});
@@ -189,7 +189,11 @@ async function post(url,body){const r=await fetch(url,{method:'POST',headers:{'C
 function step(n){document.querySelectorAll('.step').forEach(e=>{const s=+e.dataset.s;e.classList.toggle('on',s===n);e.classList.toggle('done',s<n)})}
 $('pick').onclick=$('drop').onclick=()=>{if(!busy)$('file').click()};
 $('file').onchange=async()=>{const f=$('file').files[0];if(!f)return;$('credit').hidden=true;
- const b64=await new Promise(res=>{const fr=new FileReader();fr.onload=()=>res(fr.result);fr.readAsDataURL(f)});run(b64,f.type||'image/jpeg')};
+ let b64=await new Promise(res=>{const fr=new FileReader();fr.onload=()=>res(fr.result);fr.readAsDataURL(f)});let type=f.type||'image/jpeg';
+ if(f.size>3e6){try{b64=await shrink(b64);type='image/jpeg'}catch(e){}}run(b64,type)};
+// Big phone photos are scaled down in the browser (long side 2048 px) to stay under hosting request limits.
+async function shrink(src){const im=new Image();await new Promise((res,rej)=>{im.onload=res;im.onerror=rej;im.src=src});const k=Math.min(1,2048/Math.max(im.width,im.height));
+ const c=document.createElement('canvas');c.width=Math.round(im.width*k);c.height=Math.round(im.height*k);c.getContext('2d').drawImage(im,0,0,c.width,c.height);return c.toDataURL('image/jpeg',0.9)}
 $('sample').onclick=async()=>{if(busy)return;const b=await (await fetch('/sample.jpg')).blob();$('credit').hidden=false;
  const b64=await new Promise(res=>{const fr=new FileReader();fr.onload=()=>res(fr.result);fr.readAsDataURL(b)});run(b64,'image/jpeg')};
 async function run(b64,type){busy=true;imgSrc=b64;$('status').textContent='';const pv=$('preview');pv.src=b64;pv.hidden=false;$('drop').classList.add('has','scanning');
@@ -197,7 +201,7 @@ async function run(b64,type){busy=true;imgSrc=b64;$('status').textContent='';con
  const msgs=['Uploading to YouCam File API…','Running Skin Analysis · 12 concerns…','Reading pores, texture, moisture…','Building your routine…'];let k=0;$('chipTxt').textContent=msgs[0];
  const t=setInterval(()=>{k=Math.min(k+1,msgs.length-1);$('chipTxt').textContent=msgs[k]},2200);
  $('pick').disabled=$('sample').disabled=true;
- try{scan=await post('/analyze',{image_base64:b64,content_type:type})}catch(e){$('status').textContent='Analysis failed: '+e.message;busy=false;clearInterval(t);$('drop').classList.remove('scanning');$('pick').disabled=$('sample').disabled=false;return}
+ try{scan=await post('/analyze',{image_base64:b64,content_type:type});scan.content_type=type;calls+=scan.api_calls||0}catch(e){$('status').textContent='Analysis failed: '+e.message;busy=false;clearInterval(t);$('drop').classList.remove('scanning');$('pick').disabled=$('sample').disabled=false;return}
  clearInterval(t);$('drop').classList.remove('scanning');$('pick').disabled=$('sample').disabled=false;busy=false;
  const c=$('chip');c.classList.add('show');c.innerHTML=`<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#7be3b5" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg>`+(scan.cached?'Loaded from cache · 0 units used':`Analyzed in ${(scan.elapsed_ms/1000).toFixed(1)} s · ${scan.mode==='live'?'live YouCam API':'mock mode'}`);
  render();step(3);hood();setTimeout(()=>$('res').scrollIntoView({behavior:'smooth'}),400)}
@@ -225,12 +229,12 @@ function drawCart(){const items=[...cart].map(product).filter(Boolean);$('lines'
  $('total').textContent='$'+items.reduce((a,p)=>a+p.price,0).toFixed(2)}
 async function tryOn(sku){document.querySelectorAll('.sw').forEach(e=>e.classList.toggle('on',e.id==='s-'+sku));
  $('cmpEmpty').hidden=false;$('cmpEmpty').innerHTML='<span><span class="spin" style="border-color:#e8c3d0;border-top-color:#c2185b;display:inline-block;vertical-align:middle"></span>&nbsp; Rendering with YouCam Makeup VTO…</span>';
- try{const r=await post('/tryon',{scan_id:scan.scan_id,sku});const a=$('after');await new Promise((res,rej)=>{a.onload=res;a.onerror=rej;a.src=r.image_url});
+ try{const r=await post('/tryon',{scan_id:scan.scan_id,sku,file_id:scan.file_id,image_base64:imgSrc,content_type:scan.content_type});calls+=r.api_calls||0;const a=$('after');await new Promise((res,rej)=>{a.onload=res;a.onerror=rej;a.src=r.image_url});
   a.hidden=$('handle').hidden=$('afterLbl').hidden=$('slider').hidden=false;$('cmpEmpty').hidden=true;setSlider(50);
   if(!cart.has(sku)){cart.add(sku);drawCart()}step(4);hood()}catch(e){$('cmpEmpty').textContent='Try-on failed: '+(e.message||'image error')}}
-function hood(){fetch('/version').then(r=>r.json()).then(v=>$('hoodTxt').textContent=`${v.youcam.api_calls} YouCam API requests this session · mode ${v.youcam.mode}`)}
+function hood(){$('hoodTxt').textContent=`${calls} YouCam API requests this session · mode ${scan?scan.mode:'—'}`}
 function setSlider(v){$('slider').value=v;$('after').style.clipPath=`inset(0 0 0 ${v}%)`;$('handle').style.left=v+'%'}
 $('slider').oninput=e=>setSlider(e.target.value);
-$('orderBtn').onclick=async()=>{if(!scan)return;try{const r=await post('/orders',{scan_id:scan.scan_id,name:$('name').value||'Guest',phone:$('phone').value,skus:[...cart],source:'web'});
+$('orderBtn').onclick=async()=>{if(!scan)return;try{const r=await post('/orders',{scan_id:scan.scan_id,name:$('name').value||'Guest',phone:$('phone').value,skus:[...cart],source:'web',skin_profile:scan.concerns});
  const L=r.lead;$('ok').innerHTML=`<b>Order received.</b><br>Lead #${L.id} · score ${L.score} · ${L.extra.basket.length} items · $${L.extra.total.toFixed(2)}<br><small>Skin profile: ${(L.extra.skin_profile||[]).map(c=>c.label).join(', ')||'—'}</small>`;$('ok').classList.add('show')}catch(e){$('ok').innerHTML='<span class="err">'+e.message+'</span>';$('ok').classList.add('show')}};
 </script></body></html>

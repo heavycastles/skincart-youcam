@@ -40,6 +40,12 @@ class AnalyzeIn(BaseModel):
 class TryOnIn(BaseModel):
     scan_id: str
     sku: str
+    # Serverless hosts may route the try-on to a fresh instance that never saw /analyze.
+    # The browser then re-sends what it already has, so no second skin analysis is needed.
+    file_id: str | None = None
+    image_base64: str | None = None
+    image_url: str | None = None
+    content_type: str = "image/jpeg"
 
 
 class OrderIn(BaseModel):
@@ -50,6 +56,7 @@ class OrderIn(BaseModel):
     skus: list[str] = Field(min_length=1)
     source: str = "web"
     telegram_chat_id: int | None = None
+    skin_profile: list[dict] | None = Field(default=None, max_length=20)  # used if the scan isn't in memory
 
 
 def _notify_n8n(payload: dict) -> None:
@@ -65,13 +72,25 @@ def _notify_n8n(payload: dict) -> None:
     threading.Thread(target=send, daemon=True).start()
 
 
+def _decode_b64(data: str) -> bytes:
+    raw = data.split(",", 1)[-1]  # accept data: URIs
+    try:
+        return base64.b64decode(raw, validate=True)
+    except (binascii.Error, ValueError) as exc:
+        raise HTTPException(422, "image_base64 is not valid base64") from exc
+
+
+def _scan_id(image: bytes | None, url: str | None) -> str:
+    return hashlib.sha256(image or (url or "").encode()).hexdigest()[:16]
+
+
 def analyze_image(image: bytes | None, url: str | None, content_type: str = "image/jpeg") -> dict:
     if image is not None and len(image) > MAX_IMAGE:
         raise HTTPException(413, "image larger than 10 MB")
-    scan_id = hashlib.sha256(image or url.encode()).hexdigest()[:16]
+    scan_id = _scan_id(image, url)
     if scan_id in scans and scans[scan_id].get("result"):
-        return scans[scan_id]["result"] | {"cached": True}
-    started, file_id = time.monotonic(), None
+        return scans[scan_id]["result"] | {"cached": True, "api_calls": 0}
+    started, file_id, calls0 = time.monotonic(), None, youcam.calls
     try:
         if image is not None and not youcam.mock:
             file_id = youcam.upload(image, content_type)  # one upload, reused by every try-on of this scan
@@ -82,19 +101,30 @@ def analyze_image(image: bytes | None, url: str | None, content_type: str = "ima
               "scores": [s.__dict__ | {"label": rec.LABELS.get(s.type, s.type)} for s in scores],
               "skin_score": rec.skin_score(scores), "concerns": rec.concerns(scores),
               "basket": rec.recommend(scores), "tryon": rec.vto_products(), "cached": False,
+              "file_id": file_id, "api_calls": youcam.calls - calls0,
               "elapsed_ms": round((time.monotonic() - started) * 1000)}
     scans[scan_id] = {"image": image, "url": url, "content_type": content_type, "file_id": file_id,
                       "result": result}
     return result
 
 
-def tryon(scan_id: str, sku: str) -> dict:
+def tryon(scan_id: str, sku: str, fallback: TryOnIn | None = None) -> dict:
     scan, product = scans.get(scan_id), rec.get_product(sku)
+    if not scan and fallback and (fallback.file_id or fallback.image_base64 or fallback.image_url):
+        image = _decode_b64(fallback.image_base64) if fallback.image_base64 else None
+        if image is not None and len(image) > MAX_IMAGE:
+            raise HTTPException(413, "image larger than 10 MB")
+        url = None if image else fallback.image_url
+        if (image or url) and _scan_id(image, url) != scan_id:
+            raise HTTPException(400, "image does not match scan_id")
+        scan = scans.setdefault(scan_id, {"image": image, "url": url, "content_type": fallback.content_type,
+                                          "file_id": fallback.file_id, "result": None})
     if not scan:
         raise HTTPException(404, "unknown scan_id, analyze first")
     if not product or not product.get("vto"):
         raise HTTPException(400, "product has no try-on effect")
     key = f"vto:{sku}"
+    calls0, started = youcam.calls, time.monotonic()
     if key not in scan:
         args = {"image": scan["image"], "url": scan["url"], "content_type": scan["content_type"]}
         try:
@@ -106,7 +136,8 @@ def tryon(scan_id: str, sku: str) -> dict:
                 scan[key] = youcam.makeup_vto([product["vto"]], **args)  # file expired -> upload again
         except YouCamError as exc:
             raise HTTPException(502, f"YouCam: {exc}") from exc
-    return {"scan_id": scan_id, "sku": sku, "image_url": scan[key]}
+    return {"scan_id": scan_id, "sku": sku, "image_url": scan[key], "api_calls": youcam.calls - calls0,
+            "elapsed_ms": round((time.monotonic() - started) * 1000)}
 
 
 def create_order(order: OrderIn) -> tuple[dict, bool]:
@@ -116,7 +147,8 @@ def create_order(order: OrderIn) -> tuple[dict, bool]:
     basket = [{"sku": i["sku"], "name": i["name"], "price": i["price"]} for i in items]
     total = round(sum(i["price"] for i in items), 2)
     scan = scans.get(order.scan_id or "", {}).get("result") or {}
-    extra = {"basket": basket, "total": total, "skin_profile": scan.get("concerns", []),
+    profile = scan.get("concerns") or (order.skin_profile or [])
+    extra = {"basket": basket, "total": total, "skin_profile": profile,
              "scan_id": order.scan_id, "telegram_chat_id": order.telegram_chat_id}
     msg = f"SkinCart order: {', '.join(b['name'] for b in basket)} (total ${total})"
     try:
@@ -133,7 +165,7 @@ bot = TelegramBot(analyze_image, tryon, create_order, OrderIn)
 
 @app.get("/healthz")
 def healthz() -> dict:
-    return {"status": "ok"}
+    return {"status": "ok", "youcam": "mock" if youcam.mock else "live"}
 
 
 @app.get("/version")
@@ -168,19 +200,13 @@ def catalog() -> dict:
 def analyze(body: AnalyzeIn) -> dict:
     if not body.image_base64 and not body.image_url:
         raise HTTPException(422, "send image_base64 or image_url")
-    image = None
-    if body.image_base64:
-        raw = body.image_base64.split(",", 1)[-1]  # accept data: URIs
-        try:
-            image = base64.b64decode(raw, validate=True)
-        except (binascii.Error, ValueError) as exc:
-            raise HTTPException(422, "image_base64 is not valid base64") from exc
+    image = _decode_b64(body.image_base64) if body.image_base64 else None
     return analyze_image(image, body.image_url if not image else None, body.content_type)
 
 
 @app.post("/tryon")
 def tryon_endpoint(body: TryOnIn) -> dict:
-    return tryon(body.scan_id, body.sku)
+    return tryon(body.scan_id, body.sku, body)
 
 
 @app.post("/orders", status_code=201)

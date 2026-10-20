@@ -2,6 +2,7 @@ import base64
 
 from fastapi.testclient import TestClient
 
+from app import main
 from app.main import app
 
 client = TestClient(app)
@@ -9,7 +10,7 @@ IMG = base64.b64encode(b"\xff\xd8 fake selfie bytes").decode()
 
 
 def test_health_ui_version():
-    assert client.get("/healthz").json() == {"status": "ok"}
+    assert client.get("/healthz").json() == {"status": "ok", "youcam": "mock"}
     assert "SkinCart" in client.get("/").text
     assert client.get("/version").json()["youcam"]["mode"] == "mock"
     assert len(client.get("/catalog").json()["products"]) >= 10
@@ -64,3 +65,23 @@ def test_sample_photo_and_score_fields():
     assert r.status_code == 200 and r.headers["content-type"] == "image/jpeg" and r.content[:2] == b"\xff\xd8"
     scan = client.post("/analyze", json={"image_base64": base64.b64encode(r.content).decode()}).json()
     assert 0 < scan["skin_score"] <= 100 and all("label" in x for x in scan["scores"])
+
+
+def test_tryon_and_order_survive_a_fresh_serverless_instance(tmp_path, monkeypatch):
+    # On Vercel /analyze and /tryon may land on different instances; the browser re-sends what it has.
+    monkeypatch.chdir(tmp_path)  # hosts may start the app from another working directory
+    img = base64.b64encode(b"\xff\xd8 another fake selfie").decode()
+    scan = client.post("/analyze", json={"image_base64": img}).json()
+    assert scan["api_calls"] == 0 and "file_id" in scan  # mock mode: no YouCam requests, no upload
+    main.scans.clear()
+    sku = scan["tryon"][0]["sku"]
+    assert client.post("/tryon", json={"scan_id": scan["scan_id"], "sku": sku}).status_code == 404
+    bad = client.post("/tryon", json={"scan_id": "0" * 16, "sku": sku, "image_base64": img})
+    assert bad.status_code == 400  # image must match the scan id
+    vto = client.post("/tryon", json={"scan_id": scan["scan_id"], "sku": sku, "image_base64": img})
+    assert vto.status_code == 200 and vto.json()["image_url"] and vto.json()["api_calls"] == 0
+    main.scans.clear()
+    o = client.post("/orders", json={"scan_id": scan["scan_id"], "name": "Guest", "phone": "+998907770011",
+                                     "skus": [sku], "skin_profile": scan["concerns"]})
+    assert o.status_code == 201 and o.json()["lead"]["extra"]["skin_profile"] == scan["concerns"]
+    assert "SkinCart" in client.get("/").text and client.get("/sample.jpg").status_code == 200

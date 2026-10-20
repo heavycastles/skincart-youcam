@@ -77,3 +77,17 @@ face still gets a useful routine.
 - Default app mode remains mock when `YOUCAM_MOCK=1` or no key (tests stay offline).
 - The older `docs/demo-draft.mp4` is the mock draft; the live draft is `docs/demo-live-draft.mp4`.
 - Do not commit `.env` or API keys. Signed result/mask URLs expire and are not stored in the repo.
+
+## Hosted demo run (Vercel) — 2026-10-21 ~00:30 MSK
+
+URL: https://skincart-youcam.vercel.app (`/healthz` → `{"status":"ok","youcam":"live"}`)
+
+Flow on the deployed app with the licensed stock face (`/sample.jpg`):
+
+| Step | YouCam HTTP requests | Time (client) | Result |
+|---|---|---|---|
+| `/analyze` (File API upload + Skin Analysis task + status polls) | 6 | ~6.2 s | skin score 84, focus: visible pores, dryness, puffy eyes |
+| `/tryon` `SC-LIP-10` (Makeup VTO task + polls, reusing the file_id) | 5 | ~8.1 s | rendered image (signed URL, not stored) |
+| `/orders` | 0 | <1 s | lead created with the skin profile |
+
+Paid tasks: 1 skin analysis + 1 makeup VTO.
