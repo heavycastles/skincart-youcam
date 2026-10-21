@@ -106,3 +106,18 @@ Edge cases checked on https://skincart-youcam.vercel.app after the input-handlin
 | 375 px viewport | no horizontal scroll, 0 JS errors |
 
 Paid tasks in this run: 3 skin analyses (2 intentionally rejected by YouCam) + 1 makeup VTO.
+
+## Demo video v2 recording (Vercel) — 2026-10-22 ~00:50 MSK
+
+Recorded `docs/demo-v2.mp4` on https://skincart-youcam.vercel.app with the sample photo (licensed stock face):
+
+| Step | YouCam HTTP requests | Time (client) | Result |
+|---|---|---|---|
+| `/analyze` (File API upload + Skin Analysis task + polls) | 6 | 5.8 s | skin score 84: visible pores 70 · dryness 73 · puffy eyes 76 |
+| `/tryon` `SC-LIP-10` Rose (reuses file_id) | 6 | ~10.3 s | rendered |
+| `/tryon` `SC-LIP-11` Coral (reuses file_id) | 5 | ~8.5 s | rendered |
+| `/orders` (Demo Shopper · +1 000 000 0000 · demo@example.com) | 0 | <1 s | receipt: lead #1 · score 65 · 7 items · $114.00 |
+
+17 YouCam requests in that session. Two more takes of the same photo were served from the in-memory cache
+(0 requests, "Loaded from cache · 0 units used"); one of them supplies the checkout and framing scenes of the video.
+Paid tasks in this run: 1 skin analysis + 2 makeup VTO.

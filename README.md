@@ -97,9 +97,9 @@ Never commit `.env` or the API key.
 ## Submission pack (local)
 
 - Devpost write-up: [`SUBMISSION.md`](SUBMISSION.md)
-- Demo script: [`docs/video-script.md`](docs/video-script.md)
+- Demo script: [`docs/video-script-v2.md`](docs/video-script-v2.md)
 - Slides PDF: [`docs/slides.pdf`](docs/slides.pdf) · cover: [`docs/cover.png`](docs/cover.png)
-- Demo video draft (live run): [`docs/demo-live-draft.mp4`](docs/demo-live-draft.mp4) (1:42; script [`docs/video-script-live.md`](docs/video-script-live.md)). Older mock draft: `docs/demo-draft.mp4`
+- **Demo video v2** (recorded on the live production demo): [`docs/demo-v2.mp4`](docs/demo-v2.mp4) (2:03, 1080p; subtitles [`docs/demo-v2.srt`](docs/demo-v2.srt), cover [`docs/demo-v2-cover.png`](docs/demo-v2-cover.png), script [`docs/video-script-v2.md`](docs/video-script-v2.md)). Earlier drafts: `docs/demo-live-draft.mp4`, `docs/demo-draft.mp4` (mock)
 - Screenshots of the live run: [`docs/screenshots/`](docs/screenshots/)
 - Live YouCam proof: [`docs/live-proof.md`](docs/live-proof.md) (2026-10-19, licensed Unsplash stock face)
 
