@@ -91,3 +91,18 @@ Flow on the deployed app with the licensed stock face (`/sample.jpg`):
 | `/orders` | 0 | <1 s | lead created with the skin profile |
 
 Paid tasks: 1 skin analysis + 1 makeup VTO.
+
+## Judge audit run (Vercel) — 2026-10-21 ~16:40 MSK
+
+Edge cases checked on https://skincart-youcam.vercel.app after the input-handling update:
+
+| Case | Result |
+|---|---|
+| Uncropped photo (face ~20% of width), sent directly to `/analyze` | 422 "Move closer: your face should fill most of the photo…" (`error_src_face_too_small`), ~4 s |
+| Photo without a face | 422 "We couldn't find a face in this photo…" (`error_no_face`), ~3.7 s |
+| Same uncropped photo through the web framing step (zoom 2.5×) | Skin Analysis OK: 6 requests, 5.7 s, skin score 85 (visible pores, dryness, puffy eyes) |
+| Makeup VTO `SC-LIP-10` Rose on that scan | rendered, 8 requests, ~15 s |
+| Text file / WebP / 300×457 JPEG / empty basket / bad email / invalid JSON | plain-language 415/422 messages, no YouCam call |
+| 375 px viewport | no horizontal scroll, 0 JS errors |
+
+Paid tasks in this run: 3 skin analyses (2 intentionally rejected by YouCam) + 1 makeup VTO.

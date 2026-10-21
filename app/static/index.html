@@ -1,6 +1,8 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>SkinCart — selfie to basket with YouCam AI</title>
+<meta name="description" content="Selfie to a skincare basket: YouCam AI Skin Analysis, makeup try-on and checkout.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22%3E%3Crect width=%2224%22 height=%2224%22 rx=%227%22 fill=%22%23c2185b%22/%3E%3Cpath d=%22M12 4c3.5 3.5 5 6 5 8.5a5 5 0 0 1-10 0C7 10 8.5 7.5 12 4z%22 fill=%22%23fff%22/%3E%3C/svg%3E">
 <style>
 :root{--ink:#1d1a22;--muted:#6f6878;--line:#eee6ea;--bg:#fbf7f5;--card:#fff;--rose:#c2185b;--rose2:#e8507f;--blush:#fde8ef;
 --ok:#1f9d6b;--mid:#e0a020;--hi:#d6455d;--shadow:0 1px 2px rgba(40,10,30,.04),0 8px 28px rgba(80,20,50,.07);--r:18px}
@@ -89,7 +91,7 @@ section.res{display:none;padding:10px 0 60px}section.res.show{display:block;anim
 .cmp .handle:after{content:"";position:absolute;top:50%;left:-15px;width:32px;height:32px;margin-top:-16px;border-radius:50%;background:#fff;box-shadow:0 4px 12px rgba(0,0,0,.25)}
 .cmp .lbl{position:absolute;top:12px;font-size:11.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#fff;background:rgba(20,10,18,.6);padding:4px 9px;border-radius:8px}
 .cmp input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:ew-resize}
-.cmp .empty{position:absolute;inset:0;display:grid;place-items:center;color:var(--muted);font-size:14px;text-align:center;padding:30px}
+.cmp .empty{position:absolute;inset:0;display:grid;place-items:end center;color:#fff;font-size:14px;font-weight:600;text-align:center;padding:18px;background:linear-gradient(180deg,transparent 55%,rgba(20,10,18,.55))}
 .sw{display:flex;align-items:center;gap:12px;width:100%;text-align:left;border:1px solid var(--line);background:#fff;border-radius:14px;padding:11px 12px;margin-bottom:10px;cursor:pointer;font:500 14px Inter}
 .sw i{width:30px;height:30px;border-radius:50%;flex:none;box-shadow:inset 0 0 0 3px rgba(255,255,255,.7),0 0 0 1px var(--line)}
 .sw.on{border-color:var(--rose);box-shadow:0 0 0 3px var(--blush)}.sw small{display:block;color:var(--muted);font-size:12px}
@@ -102,6 +104,21 @@ input.f{width:100%;padding:12px 13px;border:1px solid var(--line);border-radius:
 .api{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.api span{font:600 11.5px ui-monospace,Menlo,monospace;background:#f6f1f4;border-radius:8px;padding:4px 8px;color:#6b3550}
 footer{border-top:1px solid var(--line);padding:22px 0 30px;color:var(--muted);font-size:12.5px}
 .err{color:var(--hi);font-weight:600}
+#status:empty{display:none}#status{background:#fff1f3;border:1px solid #f7c6d0;border-radius:14px;padding:12px 14px;margin:0 0 18px;font-weight:600}
+.sr{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+:focus-visible{outline:3px solid #f08aac;outline-offset:2px}
+.drop.dragover{border-color:var(--rose);background:#ffeaf1}
+.framing{cursor:grab;touch-action:none;border:0}.framing:active{cursor:grabbing}
+.drop.framing #frameImg{position:absolute;max-width:none;object-fit:fill;inset:auto;user-select:none;-webkit-user-drag:none}
+.shade{position:absolute;inset:0;pointer-events:none}
+.guide{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);border-radius:50%;border:2px dashed rgba(255,255,255,.9);pointer-events:none}
+.ghint{position:absolute;left:12px;right:12px;top:12px;text-align:center;color:#fff;font-size:13px;font-weight:600;text-shadow:0 1px 3px rgba(0,0,0,.5);pointer-events:none}
+.frametools{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:12px}
+.frametools label{font-size:13px;color:var(--muted);display:flex;align-items:center;gap:8px;flex:1;min-width:150px}
+.frametools input[type=range]{flex:1;accent-color:var(--rose)}
+.formerr{color:var(--hi);font-size:13px;font-weight:600;margin:-2px 0 10px}.formerr:empty{display:none}
+@media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+@media(max-width:520px){.wrap{padding:0 16px}h1{font-size:34px}.fc{min-width:0;flex:1 1 130px}.card{padding:18px}.masks{gap:8px}.navlink{display:none}}
 @media(max-width:960px){.hero,.grid,.vto{grid-template-columns:1fr}.tiles{grid-template-columns:repeat(2,1fr)}.prods{grid-template-columns:1fr}h1{font-size:40px}.side{position:static}.summary{grid-template-columns:1fr}}
 </style></head><body>
 <nav><div class="wrap navin">
@@ -119,20 +136,22 @@ footer{border-top:1px solid var(--line);padding:22px 0 30px;color:var(--muted);f
     <button class="btn pri" id="pick"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h3l2-3h6l2 3h3v13H4z"/><circle cx="12" cy="13" r="4"/></svg>Upload a selfie</button>
     <button class="btn sec" id="sample">Use sample photo</button>
    </div>
-   <input type="file" id="file" accept="image/*" capture="user" hidden>
-   <p class="fine">Photos are sent only to the YouCam API for analysis. Results are cached per image, so a re-scan costs nothing.</p>
+   <input type="file" id="file" accept="image/jpeg,image/png,image/webp,image/heic,image/*" hidden aria-hidden="true" tabindex="-1">
+   <p class="fine">JPG or PNG, face filling most of the frame, good light. Photos are sent only to the YouCam API for analysis; results are cached per image, so a re-scan costs nothing.</p>
    <div class="steps" id="steps"><span class="step on" data-s="1"><b>1</b>Selfie</span><span class="step" data-s="2"><b>2</b>Skin analysis</span><span class="step" data-s="3"><b>3</b>Try-on</span><span class="step" data-s="4"><b>4</b>Checkout</span></div>
   </div>
   <div>
-   <div class="stage"><div class="drop" id="drop">
+   <div class="stage"><div class="drop" id="drop" role="button" tabindex="0" aria-label="Upload a selfie: click or drop a photo here">
      <div class="ph"><svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#d987a4" stroke-width="1.6"><circle cx="12" cy="9" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg><div><b>Drop a selfie here</b><br><small>front-facing, good light, no filters</small></div></div>
-     <img id="preview" alt="" hidden><div class="scan"></div>
-     <div class="chip" id="chip"><span class="spin"></span><span id="chipTxt">Analyzing…</span></div>
-   </div></div>
+     <img id="preview" alt="Your photo" hidden><img id="frameImg" alt="Photo being framed" hidden draggable="false"><div class="shade" id="shade" hidden></div><div class="guide" id="guide" hidden></div><div class="ghint" id="ghint" hidden>Zoom and drag so your face fills the oval</div><div class="scan"></div>
+     <div class="chip" id="chip" aria-live="polite"><span class="spin"></span><span id="chipTxt">Analyzing…</span></div>
+   </div>
+   <div class="frametools" id="frametools" hidden><label>Zoom <input type="range" id="zoom" min="100" max="400" value="100" aria-label="Zoom photo"></label>
+    <button class="btn sec" id="frameCancel" type="button">Cancel</button><button class="btn pri" id="frameGo" type="button">Analyze photo</button></div></div>
    <div class="credit" id="credit" hidden>Sample photo: Jake Nackos / Unsplash</div>
   </div>
  </div>
- <p id="status" class="err"></p>
+ <p id="status" class="err" role="alert" aria-live="assertive"></p>
 
  <section class="res" id="res"><div class="grid"><div>
   <div class="card">
@@ -151,18 +170,21 @@ footer{border-top:1px solid var(--line);padding:22px 0 30px;color:var(--muted);f
   </div>
   <div class="card" id="tryCard">
    <div class="hd"><div><h2 class="serif">Virtual try-on</h2><p class="sub">Shades from the shop, rendered on your photo by YouCam AI Makeup VTO. Drag to compare.</p></div><span class="pill" id="vtoPill">Makeup VTO</span></div>
-   <div class="vto"><div class="cmp" id="cmp"><img id="before" alt=""><img id="after" class="after" alt="" hidden><div class="handle" id="handle" hidden></div>
+   <div class="vto"><div class="cmp" id="cmp"><img id="before" alt="Your photo before try-on"><img id="after" class="after" alt="Your photo with the selected shade" hidden><div class="handle" id="handle" hidden></div>
      <span class="lbl" style="left:12px">Before</span><span class="lbl" id="afterLbl" style="right:12px" hidden>After</span>
-     <div class="empty" id="cmpEmpty">Pick a shade to see it on your photo</div><input type="range" id="slider" min="0" max="100" value="50" hidden></div>
-    <div id="shades"></div></div>
+     <div class="empty" id="cmpEmpty">Pick a shade to see it on your photo</div><input type="range" id="slider" min="0" max="100" value="50" hidden aria-label="Compare before and after"></div>
+    <div id="shades" role="group" aria-label="Shades to try on"></div></div>
   </div>
  </div>
  <aside class="side"><div class="card cart">
-  <h3 class="serif">Your basket</h3><div id="lines"></div>
+  <h3 class="serif">Your basket</h3><div id="lines" aria-live="polite"></div>
   <div class="tot"><span>Total</span><span id="total">$0.00</span></div>
-  <input class="f" id="name" placeholder="Name" value=""><input class="f" id="phone" placeholder="Phone, e.g. +998 90 123 45 67">
-  <button class="btn pri" id="orderBtn" style="width:100%;justify-content:center">Place order</button>
-  <div class="ok" id="ok"></div>
+  <label class="sr" for="name">Name</label><input class="f" id="name" placeholder="Name" autocomplete="name" maxlength="120">
+  <label class="sr" for="phone">Phone</label><input class="f" id="phone" type="tel" inputmode="tel" autocomplete="tel" maxlength="40" placeholder="Phone, e.g. +998 90 123 45 67">
+  <label class="sr" for="email">Email (optional if phone given)</label><input class="f" id="email" type="email" autocomplete="email" maxlength="200" placeholder="or email">
+  <div class="formerr" id="formErr" role="alert"></div>
+  <button class="btn pri" id="orderBtn" type="button" style="width:100%;justify-content:center">Place order</button>
+  <div class="ok" id="ok" role="status" aria-live="polite"></div>
   <div class="meta">Orders land in the shop's lead inbox (normalized, de-duplicated, scored) and trigger an n8n alert plus a day-14 re-scan reminder.</div>
  </div>
  <div class="card"><div style="font-weight:600">Under the hood</div><p class="sub" style="margin:4px 0 0" id="hoodTxt">YouCam API calls in this session</p>
@@ -181,60 +203,137 @@ footer{border-top:1px solid var(--line);padding:22px 0 30px;color:var(--muted);f
 </main>
 <footer><div class="wrap">SkinCart · built on the YouCam AI Skin Analysis and Makeup VTO APIs · same flow runs in the shop's Telegram bot · MIT</div></footer>
 <script>
-const $=id=>document.getElementById(id);let scan=null,cart=new Set(),imgSrc=null,busy=false,calls=0;
+const $=id=>document.getElementById(id);let scan=null,cart=new Set(),imgSrc=null,busy=false,calls=0,tryTok=0,trying=null,ordering=false;
 const COLORS={cleanser:['#d9ecf7','#9cc9e6'],serum:['#ffe7c7','#f3b874'],treatment:['#e6dcfb','#a58be6'],eye:['#dff3ea','#87cfae'],moisturizer:['#fde3ea','#ef9ab4'],spf:['#fff4c4','#efcf55'],makeup:['#f9d9df','#c94f6d']};
 const sevColor=v=>v<50?'var(--hi)':v<70?'var(--mid)':v<80?'#d987a4':'var(--ok)';
-fetch('/version').then(r=>r.json()).then(v=>{const live=v.youcam.mode==='live';$('mode').classList.toggle('live',live);$('modeTxt').textContent='YouCam API · '+(live?'LIVE':'mock')});
-async function post(url,body){const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});const j=await r.json();if(!r.ok)throw new Error(j.detail||r.status);return j}
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const MIN_SIDE=480,MAX_FILE=25e6;
+fetch('/version').then(r=>r.json()).then(v=>{const live=v.youcam.mode==='live';$('mode').classList.toggle('live',live);$('modeTxt').textContent='YouCam API · '+(live?'LIVE':'mock')}).catch(()=>{});
+// Every server answer becomes one readable sentence: JSON detail, or a fallback for host-level errors (plain text / HTML).
+const FALLBACK={413:'This photo is too large to upload. Please use a smaller one.',429:'Too many requests. Please wait a few seconds and try again.',500:'Something went wrong on our side. Please try again.',502:'YouCam couldn\u2019t process this request right now. Please try again.',503:'The service is busy. Please try again in a moment.',504:'YouCam is taking longer than usual. Please try again in a moment.'};
+async function post(url,body,ms=70000){const ctl=new AbortController(),t=setTimeout(()=>ctl.abort(),ms);let r;
+ try{r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),signal:ctl.signal})}
+ catch(e){throw new Error(e.name==='AbortError'?FALLBACK[504]:'Network error \u2014 check your connection and try again.')}finally{clearTimeout(t)}
+ let j=null;try{j=await r.json()}catch(e){}
+ if(!r.ok){const d=j&&j.detail;const e=new Error(typeof d==='string'?d:Array.isArray(d)?d.map(x=>x.msg).join(' '):(FALLBACK[r.status]||`Something went wrong (HTTP ${r.status}). Please try again.`));e.code=r.headers.get('X-SkinCart-Error');e.status=r.status;throw e}
+ if(!j)throw new Error('Unexpected server response. Please try again.');return j}
+function say(msg){$('status').textContent=msg||'';if(msg)$('status').scrollIntoView({behavior:'smooth',block:'center'})}
 function step(n){document.querySelectorAll('.step').forEach(e=>{const s=+e.dataset.s;e.classList.toggle('on',s===n);e.classList.toggle('done',s<n)})}
-$('pick').onclick=$('drop').onclick=()=>{if(!busy)$('file').click()};
-$('file').onchange=async()=>{const f=$('file').files[0];if(!f)return;$('credit').hidden=true;
- let b64=await new Promise(res=>{const fr=new FileReader();fr.onload=()=>res(fr.result);fr.readAsDataURL(f)});let type=f.type||'image/jpeg';
- if(f.size>3e6){try{b64=await shrink(b64);type='image/jpeg'}catch(e){}}run(b64,type)};
-// Big phone photos are scaled down in the browser (long side 2048 px) to stay under hosting request limits.
-async function shrink(src){const im=new Image();await new Promise((res,rej)=>{im.onload=res;im.onerror=rej;im.src=src});const k=Math.min(1,2048/Math.max(im.width,im.height));
- const c=document.createElement('canvas');c.width=Math.round(im.width*k);c.height=Math.round(im.height*k);c.getContext('2d').drawImage(im,0,0,c.width,c.height);return c.toDataURL('image/jpeg',0.9)}
-$('sample').onclick=async()=>{if(busy)return;const b=await (await fetch('/sample.jpg')).blob();$('credit').hidden=false;
- const b64=await new Promise(res=>{const fr=new FileReader();fr.onload=()=>res(fr.result);fr.readAsDataURL(b)});run(b64,'image/jpeg')};
-async function run(b64,type){busy=true;imgSrc=b64;$('status').textContent='';const pv=$('preview');pv.src=b64;pv.hidden=false;$('drop').classList.add('has','scanning');
+function setBusy(b){busy=b;$('pick').disabled=$('sample').disabled=b;$('drop').setAttribute('aria-busy',b)}
+
+/* ---------- picking a photo: button, drop zone (click / keyboard / drag & drop) ---------- */
+const openPicker=()=>{if(!busy&&!framing)$('file').click()};
+$('pick').onclick=openPicker;$('drop').onclick=openPicker;
+$('drop').onkeydown=e=>{if((e.key==='Enter'||e.key===' ')&&!framing){e.preventDefault();openPicker()}};
+['dragenter','dragover'].forEach(ev=>$('drop').addEventListener(ev,e=>{e.preventDefault();if(!busy)$('drop').classList.add('dragover')}));
+['dragleave','drop'].forEach(ev=>$('drop').addEventListener(ev,e=>{e.preventDefault();$('drop').classList.remove('dragover')}));
+$('drop').addEventListener('drop',e=>{if(busy)return;const f=e.dataTransfer.files&&e.dataTransfer.files[0];if(f)takeFile(f)});
+window.addEventListener('dragover',e=>e.preventDefault());window.addEventListener('drop',e=>e.preventDefault()); // never navigate away
+$('file').onchange=()=>{const f=$('file').files[0];$('file').value='';if(f)takeFile(f)};
+const readURL=blob=>new Promise((res,rej)=>{const fr=new FileReader();fr.onload=()=>res(fr.result);fr.onerror=rej;fr.readAsDataURL(blob)});
+const loadImg=src=>new Promise((res,rej)=>{const im=new Image();im.onload=()=>res(im);im.onerror=rej;im.src=src});
+async function takeFile(f){say('');$('credit').hidden=true;
+ const heic=/hei[cf]/i.test(f.type)||/\.(heic|heif)$/i.test(f.name||'');
+ if(!heic&&f.type&&!f.type.startsWith('image/'))return say('That file isn\u2019t a photo. Please choose a JPG or PNG selfie.');
+ if(f.size>MAX_FILE)return say('This photo is over 25 MB. Please choose a smaller one.');
+ let im;try{im=await loadImg(await readURL(f))}catch(e){return say(heic?'This browser can\u2019t open HEIC photos. Please choose a JPG or PNG (on iPhone: Settings \u2192 Camera \u2192 Formats \u2192 Most Compatible).':'We couldn\u2019t open this file as an image. Please choose a JPG or PNG selfie.')}
+ if(Math.min(im.naturalWidth,im.naturalHeight)<MIN_SIDE)return say(`This photo is too small (${im.naturalWidth}\u00d7${im.naturalHeight} px). YouCam needs at least ${MIN_SIDE} px on the short side.`);
+ startFraming(im)}
+
+/* ---------- framing: YouCam needs the face to fill >60% of the photo width, so let people zoom/crop first ---------- */
+let framing=null;
+function startFraming(im,zoom=1){const d=$('drop'),fi=$('frameImg');framing={im,zoom,x:0,y:0};
+ d.classList.add('has','framing');d.classList.remove('scanning');document.querySelector('.ph').style.display='none';$('preview').hidden=true;$('chip').classList.remove('show');
+ fi.src=im.src;fi.hidden=false;$('guide').hidden=$('shade').hidden=$('ghint').hidden=false;$('frametools').hidden=false;$('zoom').value=Math.round(zoom*100);
+ const g=geom();framing.x=(g.W-g.w)/2;framing.y=(g.H-g.h)/2;
+ d.setAttribute('aria-label','Framing your photo: drag to move, use the zoom slider, then press Analyze photo');layoutFrame();step(1);$('frameGo').focus({preventScroll:true});$('drop').scrollIntoView({behavior:'smooth',block:'center'})}
+// Zoom is capped so the framed area keeps >= MIN_CROP real pixels; it is then scaled to YouCam's 480 px minimum if needed.
+const MIN_CROP=320;
+function geom(){const d=$('drop'),W=d.clientWidth,H=d.clientHeight,im=framing.im,base=Math.max(W/im.naturalWidth,H/im.naturalHeight);
+ const zmax=Math.max(1,Math.min(4,Math.min(W,H)/(base*MIN_CROP)));framing.zoom=Math.min(framing.zoom,zmax);$('zoom').max=Math.round(zmax*100);const s=base*framing.zoom;
+ const w=im.naturalWidth*s,h=im.naturalHeight*s;framing.x=Math.min(0,Math.max(W-w,framing.x));framing.y=Math.min(0,Math.max(H-h,framing.y));return{W,H,s,w,h}}
+function layoutFrame(){if(!framing)return;const g=geom(),fi=$('frameImg');Object.assign(fi.style,{left:framing.x+'px',top:framing.y+'px',width:g.w+'px',height:g.h+'px'});
+ const gw=Math.round(g.W*.7),gh=Math.round(Math.min(g.H*.84,gw/.76));Object.assign($('guide').style,{width:gw+'px',height:gh+'px'});
+ $('shade').style.background=`radial-gradient(ellipse ${gw/2}px ${gh/2}px at 50% 50%,transparent 98%,rgba(20,10,18,.45) 100%)`}
+function zoomTo(z){if(!framing)return;const g0=geom(),cx=(g0.W/2-framing.x)/g0.s,cy=(g0.H/2-framing.y)/g0.s;framing.zoom=Math.max(1,z);
+ const g=geom();framing.x=g0.W/2-cx*g.s;framing.y=g0.H/2-cy*g.s;$('zoom').value=Math.round(framing.zoom*100);layoutFrame()}
+$('zoom').oninput=e=>zoomTo(e.target.value/100);
+let drag=null;
+$('drop').addEventListener('pointerdown',e=>{if(!framing)return;drag={x:e.clientX,y:e.clientY,fx:framing.x,fy:framing.y};$('drop').setPointerCapture(e.pointerId)});
+$('drop').addEventListener('pointermove',e=>{if(!drag||!framing)return;framing.x=drag.fx+e.clientX-drag.x;framing.y=drag.fy+e.clientY-drag.y;layoutFrame()});
+['pointerup','pointercancel'].forEach(ev=>$('drop').addEventListener(ev,()=>{drag=null}));
+$('drop').addEventListener('wheel',e=>{if(!framing)return;e.preventDefault();zoomTo(framing.zoom*(e.deltaY<0?1.08:1/1.08))},{passive:false});
+$('drop').addEventListener('keydown',e=>{if(!framing)return;const k={ArrowLeft:[20,0],ArrowRight:[-20,0],ArrowUp:[0,20],ArrowDown:[0,-20]}[e.key];
+ if(k){e.preventDefault();framing.x+=k[0];framing.y+=k[1];layoutFrame()}else if(e.key==='+'||e.key==='=')zoomTo(framing.zoom*1.1);else if(e.key==='-')zoomTo(framing.zoom/1.1);else if(e.key==='Enter'){e.preventDefault();$('frameGo').click()}});
+window.addEventListener('resize',layoutFrame);
+function endFraming(){framing=null;$('drop').classList.remove('framing');$('frameImg').hidden=$('guide').hidden=$('shade').hidden=$('ghint').hidden=true;$('frametools').hidden=true;$('drop').setAttribute('aria-label','Upload a selfie: click or drop a photo here')}
+$('frameCancel').onclick=e=>{e.stopPropagation();endFraming();if(!imgSrc){$('drop').classList.remove('has');document.querySelector('.ph').style.display=''}else{$('preview').hidden=false}};
+$('frameGo').onclick=e=>{e.stopPropagation();if(!framing||busy)return;const g=geom(),im=framing.im;
+ const sx=-framing.x/g.s,sy=-framing.y/g.s,sw=g.W/g.s,sh=g.H/g.s;
+ if(Math.min(sw,sh)<MIN_CROP-1)return say('Zoomed in too far for this photo. Zoom out a little and try again.');
+ const k=Math.min(2048/Math.max(sw,sh),Math.max(1,MIN_SIDE/Math.min(sw,sh))),c=document.createElement('canvas');c.width=Math.round(sw*k);c.height=Math.round(sh*k);
+ const ctx=c.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,c.width,c.height);ctx.drawImage(im,sx,sy,sw,sh,0,0,c.width,c.height);
+ const last={im,zoom:framing.zoom};endFraming();run(c.toDataURL('image/jpeg',0.9),'image/jpeg',last)};
+
+$('sample').onclick=async()=>{if(busy)return;endFraming();say('');let b;try{b=await (await fetch('/sample.jpg')).blob()}catch(e){return say('Couldn\u2019t load the sample photo. Please try again.')}
+ $('credit').hidden=false;run(await readURL(b),'image/jpeg',null)};
+
+async function run(b64,type,reframe){setBusy(true);say('');const prevSrc=imgSrc;const pv=$('preview');pv.src=b64;pv.hidden=false;$('drop').classList.add('has','scanning');
  document.querySelector('.ph').style.display='none';step(2);
- const msgs=['Uploading to YouCam File API…','Running Skin Analysis · 12 concerns…','Reading pores, texture, moisture…','Building your routine…'];let k=0;$('chipTxt').textContent=msgs[0];
- const t=setInterval(()=>{k=Math.min(k+1,msgs.length-1);$('chipTxt').textContent=msgs[k]},2200);
- $('pick').disabled=$('sample').disabled=true;
- try{scan=await post('/analyze',{image_base64:b64,content_type:type});scan.content_type=type;calls+=scan.api_calls||0}catch(e){$('status').textContent='Analysis failed: '+e.message;busy=false;clearInterval(t);$('drop').classList.remove('scanning');$('pick').disabled=$('sample').disabled=false;return}
- clearInterval(t);$('drop').classList.remove('scanning');$('pick').disabled=$('sample').disabled=false;busy=false;
- const c=$('chip');c.classList.add('show');c.innerHTML=`<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#7be3b5" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg>`+(scan.cached?'Loaded from cache · 0 units used':`Analyzed in ${(scan.elapsed_ms/1000).toFixed(1)} s · ${scan.mode==='live'?'live YouCam API':'mock mode'}`);
- render();step(3);hood();setTimeout(()=>$('res').scrollIntoView({behavior:'smooth'}),400)}
-function render(){const live=scan.mode==='live';$('res').classList.add('show');
+ const msgs=['Uploading to YouCam File API…','Running Skin Analysis · 12 concerns…','Reading pores, texture, moisture…','Building your routine…','Still working — YouCam is busy, hang on…'];let k=0;$('chipTxt').textContent=msgs[0];
+ const t=setInterval(()=>{k=Math.min(k+1,msgs.length-1);$('chipTxt').textContent=msgs[k]},k<3?2200:6000);
+ let res;try{res=await post('/analyze',{image_base64:b64,content_type:type})}catch(e){clearInterval(t);$('drop').classList.remove('scanning');setBusy(false);
+  say('Analysis failed: '+e.message);
+  if(reframe&&e.status===422&&/face_too_small|face_out_of_bound/.test(e.code||'')){startFraming(reframe.im,reframe.zoom*(e.code==='error_src_face_too_small'?1.4:1/1.3))}
+  else if(prevSrc){pv.src=prevSrc}else{pv.hidden=true;$('drop').classList.remove('has');document.querySelector('.ph').style.display='';step(1)}
+  return}
+ clearInterval(t);scan=res;imgSrc=b64;scan.content_type=type;calls+=scan.api_calls||0;$('drop').classList.remove('scanning');setBusy(false);
+ const c=$('chip');c.classList.add('show');c.innerHTML=`<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#7be3b5" stroke-width="3" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg>`+esc(scan.cached?'Loaded from cache · 0 units used':`Analyzed in ${(scan.elapsed_ms/1000).toFixed(1)} s · ${scan.mode==='live'?'live YouCam API':'mock mode'}`);
+ tryTok++;trying=null;render();step(3);hood();setTimeout(()=>$('res').scrollIntoView({behavior:'smooth'}),400)}
+function render(){const live=scan.mode==='live';$('res').classList.add('show');$('ok').classList.remove('show');$('formErr').textContent='';
  $('srcPill').textContent=live?'Live · YouCam Skin Analysis':'Mock data';$('srcPill').classList.toggle('live',live);
  $('vtoPill').textContent=live?'Live · YouCam Makeup VTO':'Mock preview';$('vtoPill').classList.toggle('live',live);
  $('snapSub').textContent=`${scan.scores.length} concerns scored by YouCam AI · higher is healthier`;
- const sc=scan.skin_score||0;let n=0;const iv=setInterval(()=>{n=Math.min(sc,n+2);$('score').textContent=n;if(n>=sc)clearInterval(iv)},18);
+ const sc=scan.skin_score||0;let n=0;$('score').textContent='0';const iv=setInterval(()=>{n=Math.min(sc,n+2);$('score').textContent=n;if(n>=sc)clearInterval(iv)},18);
  requestAnimationFrame(()=>$('arc').style.strokeDashoffset=465*(1-sc/100));
- $('focus').innerHTML=scan.concerns.length?scan.concerns.map(c=>`<div class="fc"><small class="sev-${c.severity}">${c.severity}</small><b>${c.label}</b> · ${c.ui_score}</div>`).join(''):'<div class="fc"><small class="sev-mild">great</small><b>No concerns</b></div>';
+ $('focus').innerHTML=scan.concerns.length?scan.concerns.map(c=>`<div class="fc"><small class="sev-${esc(c.severity)}">${esc(c.severity)}</small><b>${esc(c.label)}</b> · ${esc(c.ui_score)}</div>`).join(''):'<div class="fc"><small class="sev-mild">great</small><b>No concerns</b></div>';
  const sorted=[...scan.scores].sort((a,b)=>a.ui_score-b.ui_score);
- $('tiles').innerHTML=sorted.map(s=>`<div class="tile"><div class="t"><span>${s.label}</span><b>${s.ui_score}</b></div><div class="bar"><i data-w="${s.ui_score}" style="background:${sevColor(s.ui_score)}"></i></div></div>`).join('');
+ $('tiles').innerHTML=sorted.map(s=>`<div class="tile"><div class="t"><span>${esc(s.label)}</span><b>${esc(s.ui_score)}</b></div><div class="bar" role="img" aria-label="${esc(s.label)} ${esc(s.ui_score)} of 100"><i data-w="${esc(s.ui_score)}" style="background:${sevColor(s.ui_score)}"></i></div></div>`).join('');
  setTimeout(()=>document.querySelectorAll('.bar i').forEach(i=>i.style.width=i.dataset.w+'%'),60);
  const masks=scan.concerns.map(c=>({c,s:scan.scores.find(x=>x.type===c.type)})).filter(m=>m.s&&m.s.mask_urls&&m.s.mask_urls.length).slice(0,3);
- $('maskWrap').hidden=!masks.length;$('masks').innerHTML=masks.map(m=>`<div class="mask"><img src="${m.s.mask_urls[0]}" alt=""><span>${m.c.label}</span></div>`).join('');
+ $('maskWrap').hidden=!masks.length;$('masks').innerHTML=masks.map(m=>`<div class="mask"><img src="${esc(m.s.mask_urls[0])}" alt="YouCam overlay for ${esc(m.c.label)}" onerror="this.parentNode.remove()"><span>${esc(m.c.label)}</span></div>`).join('');
  cart=new Set(scan.basket.map(p=>p.sku));
  $('routinePill').textContent=`${scan.basket.length} steps`;
- $('prods').innerHTML=scan.basket.map(p=>{const [a,b]=COLORS[p.category]||COLORS.makeup;return `<div class="prod in" id="p-${p.sku}"><div class="pic" style="background:linear-gradient(160deg,${a},${b})"></div><div style="flex:1"><div class="cat">${p.category}</div><h4>${p.name}</h4><p>${p.reason}</p><div class="prow"><span class="price">$${p.price.toFixed(2)}</span><button class="add" onclick="toggle('${p.sku}')">In basket</button></div></div></div>`}).join('');
- $('before').src=imgSrc;$('after').hidden=$('handle').hidden=$('afterLbl').hidden=$('slider').hidden=true;$('cmpEmpty').hidden=false;
- $('shades').innerHTML=scan.tryon.map(p=>`<button class="sw" id="s-${p.sku}" onclick="tryOn('${p.sku}')"><i style="background:${p.swatch}"></i><span>${p.name}<small>$${p.price.toFixed(2)} · ${p.kind.replace('_',' ')}</small></span></button>`).join('');
+ $('prods').innerHTML=scan.basket.map(p=>{const [a,b]=COLORS[p.category]||COLORS.makeup;return `<div class="prod in" id="p-${esc(p.sku)}"><div class="pic" style="background:linear-gradient(160deg,${a},${b})" aria-hidden="true"></div><div style="flex:1"><div class="cat">${esc(p.category)}</div><h4>${esc(p.name)}</h4><p>${esc(p.reason)}</p><div class="prow"><span class="price">$${p.price.toFixed(2)}</span><button class="add" type="button" aria-pressed="true" aria-label="${esc(p.name)} in basket" onclick="toggle('${esc(p.sku)}')">In basket</button></div></div></div>`}).join('');
+ $('before').src=imgSrc;$('after').hidden=$('handle').hidden=$('afterLbl').hidden=$('slider').hidden=true;$('cmpEmpty').hidden=false;$('cmpEmpty').textContent='Pick a shade to see it on your photo';
+ $('shades').innerHTML=scan.tryon.map(p=>`<button class="sw" type="button" aria-pressed="false" id="s-${esc(p.sku)}" onclick="tryOn('${esc(p.sku)}')"><i style="background:${esc(p.swatch)}" aria-hidden="true"></i><span>${esc(p.name)}<small>$${p.price.toFixed(2)} · ${esc(p.kind.replace('_',' '))}</small></span></button>`).join('');
  drawCart()}
 const product=sku=>scan.basket.find(p=>p.sku===sku)||scan.tryon.find(p=>p.sku===sku);
-function toggle(sku){cart.has(sku)?cart.delete(sku):cart.add(sku);const el=$('p-'+sku);if(el){el.classList.toggle('in',cart.has(sku));el.querySelector('.add').textContent=cart.has(sku)?'In basket':'Add'}drawCart()}
-function drawCart(){const items=[...cart].map(product).filter(Boolean);$('lines').innerHTML=items.map(p=>`<div class="line"><span>${p.name}</span><b>$${p.price.toFixed(2)}</b></div>`).join('')||'<p class="sub">Basket is empty</p>';
- $('total').textContent='$'+items.reduce((a,p)=>a+p.price,0).toFixed(2)}
-async function tryOn(sku){document.querySelectorAll('.sw').forEach(e=>e.classList.toggle('on',e.id==='s-'+sku));
+function toggle(sku){cart.has(sku)?cart.delete(sku):cart.add(sku);const el=$('p-'+sku);if(el){const on=cart.has(sku),b=el.querySelector('.add');el.classList.toggle('in',on);b.textContent=on?'In basket':'Add';b.setAttribute('aria-pressed',on);b.setAttribute('aria-label',`${product(sku).name} ${on?'in basket':'— add to basket'}`)}drawCart()}
+function drawCart(){const items=[...cart].map(product).filter(Boolean);$('lines').innerHTML=items.map(p=>`<div class="line"><span>${esc(p.name)}</span><b>$${p.price.toFixed(2)}</b></div>`).join('')||'<p class="sub">Basket is empty — add a product from your routine.</p>';
+ $('total').textContent='$'+items.reduce((a,p)=>a+p.price,0).toFixed(2);$('orderBtn').disabled=ordering||!items.length;if(items.length)$('formErr').textContent=''}
+// Only the latest click renders (a slow earlier try-on can't overwrite the shade picked after it); same shade twice = one request.
+async function tryOn(sku){if(trying===sku)return;const tok=++tryTok;trying=sku;
+ document.querySelectorAll('.sw').forEach(e=>{const on=e.id==='s-'+sku;e.classList.toggle('on',on);e.setAttribute('aria-pressed',on)});
  $('cmpEmpty').hidden=false;$('cmpEmpty').innerHTML='<span><span class="spin" style="border-color:#e8c3d0;border-top-color:#c2185b;display:inline-block;vertical-align:middle"></span>&nbsp; Rendering with YouCam Makeup VTO…</span>';
- try{const r=await post('/tryon',{scan_id:scan.scan_id,sku,file_id:scan.file_id,image_base64:imgSrc,content_type:scan.content_type});calls+=r.api_calls||0;const a=$('after');await new Promise((res,rej)=>{a.onload=res;a.onerror=rej;a.src=r.image_url});
+ try{const r=await post('/tryon',{scan_id:scan.scan_id,sku,file_id:scan.file_id,image_base64:imgSrc,content_type:scan.content_type});if(tok!==tryTok)return;calls+=r.api_calls||0;
+  const a=$('after');await new Promise((res,rej)=>{a.onload=res;a.onerror=()=>rej(new Error('The try-on image couldn\u2019t be loaded. Please try again.'));a.src=r.image_url});if(tok!==tryTok)return;
   a.hidden=$('handle').hidden=$('afterLbl').hidden=$('slider').hidden=false;$('cmpEmpty').hidden=true;setSlider(50);
-  if(!cart.has(sku)){cart.add(sku);drawCart()}step(4);hood()}catch(e){$('cmpEmpty').textContent='Try-on failed: '+(e.message||'image error')}}
+  if(!cart.has(sku)){cart.add(sku);drawCart()}step(4);hood()}
+ catch(e){if(tok===tryTok){$('cmpEmpty').hidden=false;$('cmpEmpty').textContent='Try-on failed: '+(e.message||'image error')}}
+ finally{if(tok===tryTok)trying=null}}
 function hood(){$('hoodTxt').textContent=`${calls} YouCam API requests this session · mode ${scan?scan.mode:'—'}`}
 function setSlider(v){$('slider').value=v;$('after').style.clipPath=`inset(0 0 0 ${v}%)`;$('handle').style.left=v+'%'}
 $('slider').oninput=e=>setSlider(e.target.value);
-$('orderBtn').onclick=async()=>{if(!scan)return;try{const r=await post('/orders',{scan_id:scan.scan_id,name:$('name').value||'Guest',phone:$('phone').value,skus:[...cart],source:'web',skin_profile:scan.concerns});
- const L=r.lead;$('ok').innerHTML=`<b>Order received.</b><br>Lead #${L.id} · score ${L.score} · ${L.extra.basket.length} items · $${L.extra.total.toFixed(2)}<br><small>Skin profile: ${(L.extra.skin_profile||[]).map(c=>c.label).join(', ')||'—'}</small>`;$('ok').classList.add('show')}catch(e){$('ok').innerHTML='<span class="err">'+e.message+'</span>';$('ok').classList.add('show')}};
+$('orderBtn').onclick=async()=>{if(!scan||ordering)return;const fe=$('formErr');fe.textContent='';
+ const skus=[...cart].filter(s=>product(s));if(!skus.length){fe.textContent='Your basket is empty. Add at least one product.';return}
+ const phone=$('phone').value.trim(),email=$('email').value.trim(),digits=phone.replace(/\D/g,'');
+ if(email&&!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){fe.textContent='That email doesn\u2019t look right. Please check it.';$('email').focus();return}
+ if(phone&&digits.length<7&&!email){fe.textContent='That phone number looks too short (at least 7 digits).';$('phone').focus();return}
+ if(!phone&&!email){fe.textContent='Enter a phone number or an email so the shop can confirm your order.';$('phone').focus();return}
+ ordering=true;const btn=$('orderBtn');btn.disabled=true;btn.textContent='Placing order…';
+ try{const r=await post('/orders',{scan_id:scan.scan_id,name:$('name').value.trim()||'Guest',phone:phone||null,email:email||null,skus,source:'web',skin_profile:scan.concerns},20000);
+  const L=r.lead;$('ok').innerHTML=`<b>Order received.</b><br>Lead #${esc(L.id)} · score ${esc(L.score)} · ${L.extra.basket.length} items · $${L.extra.total.toFixed(2)}<br><small>Skin profile: ${esc((L.extra.skin_profile||[]).map(c=>c.label).join(', ')||'—')}</small>`;$('ok').classList.add('show')}
+ catch(e){fe.textContent=e.message}
+ finally{ordering=false;btn.textContent='Place order';drawCart()}};
 </script></body></html>

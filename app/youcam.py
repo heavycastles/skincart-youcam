@@ -18,6 +18,8 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
+import threading
 import time
 import urllib.error
 import urllib.request
@@ -29,7 +31,21 @@ SD_ACTIONS = ["acne", "pore", "wrinkle", "texture", "moisture", "oiliness", "red
 
 
 class YouCamError(RuntimeError):
-    pass
+    """``code`` is YouCam's machine-readable error (e.g. ``error_src_face_too_small``), ``timeout``,
+    ``network`` or ``http_<status>``; the message keeps the raw detail for server logs only."""
+
+    def __init__(self, message: str, code: str = "unknown") -> None:
+        super().__init__(message)
+        self.code = code
+
+
+_ERR_CODE = re.compile(r"\b(?!error_code\b|error_message\b)(error_[a-z_0-9]+|exceed_[a-z_0-9]+|invalid_parameter"
+                       r"|unknown_internal_error)\b")
+
+
+def _error_code(text: str, default: str) -> str:
+    m = _ERR_CODE.search(text or "")
+    return m.group(1) if m else default
 
 
 @dataclass
@@ -51,6 +67,20 @@ class YouCamClient:
             timeout = float(os.getenv("YOUCAM_TIMEOUT") or (45 if os.getenv("VERCEL") else 120))
         self.poll_interval, self.timeout = poll_interval, timeout
         self.calls = 0
+        self._local = threading.local()  # per-request deadline (sync routes run in a thread pool)
+
+    # ---------- time budget ----------
+    def begin(self) -> None:
+        """Start one time budget shared by every call of a user action (upload + task + polls), so a slow
+        upload can't push the whole action past the host's function limit."""
+        self._local.deadline = time.monotonic() + self.timeout
+
+    def end(self) -> None:
+        self._local.deadline = None
+
+    def _remaining(self) -> float:
+        deadline = getattr(self._local, "deadline", None)
+        return self.timeout if deadline is None else deadline - time.monotonic()
 
     # ---------- low-level HTTP ----------
     def _request(self, method: str, url: str, body: dict | bytes | None = None,
@@ -65,37 +95,62 @@ class YouCamClient:
         if url.startswith(self.base_url):
             hdrs["Authorization"] = f"Bearer {self.api_key}"
         req = urllib.request.Request(url, data=data, method=method, headers=hdrs)  # noqa: S310
+        remaining = self._remaining()
+        if remaining <= 0:
+            raise YouCamError("time budget used up before the request", "timeout")
         try:
-            with urllib.request.urlopen(req, timeout=min(60.0, self.timeout)) as resp:  # noqa: S310
+            with urllib.request.urlopen(req, timeout=max(1.0, min(60.0, remaining))) as resp:  # noqa: S310
                 raw = resp.read()
         except urllib.error.HTTPError as exc:
             detail = exc.read().decode(errors="replace")[:500]
-            raise YouCamError(f"{method} {url.split('?')[0]} -> {exc.code}: {detail}") from exc
+            raise YouCamError(f"{method} {url.split('?')[0]} -> {exc.code}: {detail}",
+                              _error_code(detail, f"http_{exc.code}")) from exc
+        except TimeoutError as exc:
+            raise YouCamError(f"{method} {url.split('?')[0]} timed out", "timeout") from exc
+        except urllib.error.URLError as exc:
+            code = "timeout" if isinstance(exc.reason, TimeoutError) else "network"
+            raise YouCamError(f"{method} {url.split('?')[0]} failed: {exc.reason}", code) from exc
+        except OSError as exc:  # connection reset mid-read etc.
+            raise YouCamError(f"{method} {url.split('?')[0]} failed: {exc}", "network") from exc
         self.calls += 1
-        return json.loads(raw) if raw.strip().startswith(b"{") else {}
+        if not raw.strip().startswith(b"{"):
+            return {}
+        try:
+            return json.loads(raw)
+        except ValueError as exc:
+            raise YouCamError(f"{method} {url.split('?')[0]} returned invalid JSON", "bad_response") from exc
 
     def upload(self, image: bytes, content_type: str = "image/jpeg", file_name: str = "selfie.jpg") -> str:
         """File API: register the file, PUT the bytes to the presigned URL, return file_id."""
         resp = self._request("POST", f"{self.base_url}/s2s/v2.0/file", {
             "files": [{"content_type": content_type, "file_name": file_name, "file_size": len(image)}]})
-        f = resp["data"]["files"][0]
-        put = f["requests"][0]
-        self._request(put.get("method", "PUT"), put["url"], image, put.get("headers") or {})
-        return f["file_id"]
+        try:
+            f = resp["data"]["files"][0]
+            put = f["requests"][0]
+            put_url, file_id = put["url"], f["file_id"]
+        except (KeyError, IndexError, TypeError) as exc:
+            raise YouCamError("file upload: unexpected response", "bad_response") from exc
+        self._request(put.get("method", "PUT"), put_url, image, put.get("headers") or {})
+        return file_id
 
     def _run_task(self, task: str, payload: dict) -> dict:
         resp = self._request("POST", f"{self.base_url}/s2s/v2.0/task/{task}", payload)
-        task_id = resp["data"]["task_id"]
-        deadline = time.monotonic() + self.timeout
+        try:
+            task_id = resp["data"]["task_id"]
+        except (KeyError, TypeError) as exc:
+            raise YouCamError(f"{task}: no task_id in response", "bad_response") from exc
+        deadline = time.monotonic() + min(self.timeout, self._remaining())
         while True:
-            data = self._request("GET", f"{self.base_url}/s2s/v2.0/task/{task}/{task_id}")["data"]
+            data = (self._request("GET", f"{self.base_url}/s2s/v2.0/task/{task}/{task_id}") or {}).get("data") or {}
             status = data.get("task_status")
             if status == "success":
                 return data
             if status == "error":
-                raise YouCamError(f"{task} failed: {data.get('error') or data.get('failure_reason')}")
-            if time.monotonic() > deadline:
-                raise YouCamError(f"{task} timed out (last status {status})")
+                err = str(data.get("error") or data.get("failure_reason") or "")
+                raise YouCamError(f"{task} failed: {err} {data.get('error_message') or ''}".strip(),
+                                  _error_code(err, "task_error"))
+            if time.monotonic() + self.poll_interval > deadline:
+                raise YouCamError(f"{task} timed out (last status {status})", "timeout")
             time.sleep(self.poll_interval)
 
     @staticmethod

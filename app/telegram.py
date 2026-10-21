@@ -10,6 +10,8 @@ import json
 import os
 import urllib.request
 
+from fastapi import HTTPException
+
 API = "https://api.telegram.org"
 
 
@@ -50,7 +52,11 @@ class TelegramBot:
             if not scan:
                 sent.append(self.send(chat_id, "Send me a selfie first 📸"))
             elif action == "try":
-                url = self.tryon(scan["scan_id"], arg)["image_url"]
+                try:
+                    url = self.tryon(scan["scan_id"], arg)["image_url"]
+                except HTTPException as exc:
+                    sent.append(self.send(chat_id, f"😕 {exc.detail}"))
+                    return {"ok": True, "sent": sent}
                 if url.startswith("http"):
                     self._api("sendPhoto", {"chat_id": chat_id, "photo": url, "caption": "Your try-on ✨"})
                 sent.append(self.send(chat_id, f"Try-on ready: {arg}", reply_markup=self._order_kb()))
@@ -65,7 +71,11 @@ class TelegramBot:
             return {"ok": True, "sent": sent}
         if photos := msg.get("photo"):
             image = self._download_photo(photos[-1]["file_id"]) if self.token else photos[-1]["file_id"].encode()
-            res = self.analyze(image, None, "image/jpeg")
+            try:
+                res = self.analyze(image, None, "image/jpeg")
+            except HTTPException as exc:  # e.g. face too small: tell the customer how to retake it
+                sent.append(self.send(chat_id, f"😕 {exc.detail}"))
+                return {"ok": True, "sent": sent}
             self.last_scan[chat_id] = res
             sent.append(self.send(chat_id, self.format_result(res), reply_markup=self._result_kb(res)))
         elif contact := msg.get("contact"):

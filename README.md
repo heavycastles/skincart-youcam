@@ -2,7 +2,11 @@
 
 **YouCam API Skin AI & eCommerce VTO Hackathon** · MIT · Built by heavycastles
 
-**Live demo:** https://skincart-youcam.vercel.app (no login; press "Use sample photo")
+**Live demo:** https://skincart-youcam.vercel.app (no login; press "Use sample photo", or upload your own selfie)
+
+Own photos go through a quick **framing step** (zoom/drag so the face fills the oval), because YouCam Skin Analysis
+needs the face to cover more than 60% of the photo width. Photos are checked before any API call (JPG/PNG, at least
+480 px on the short side), and YouCam errors such as "face too small", "no face" or "too dark" come back as plain advice.
 
 Small cosmetics shops in Central Asia/CIS sell mostly through Telegram and Instagram DMs, and answer
 "what should I buy for my skin?" by hand. **SkinCart** turns that into a bot:
@@ -50,7 +54,7 @@ portrait behind the "Use sample photo" button.
 ```bash
 cp .env.example .env               # optional: YOUCAM_API_KEY, TELEGRAM_BOT_TOKEN
 python -m venv .venv && .venv/bin/pip install -r requirements-dev.txt
-.venv/bin/pytest -q                # 21 tests (offline mock)
+.venv/bin/pytest -q                # 40 tests (offline mock)
 .venv/bin/python serve.py          # http://localhost:8080  (mock mode if no key)
 docker compose up --build          # app :8080 + n8n :5678 (import n8n/skincart-orders.json)
 ```
