@@ -28,9 +28,10 @@ def test_selfie_to_order_end_to_end():
                                      "skus": [b["sku"] for b in scan["basket"]], "source": "telegram"})
     assert o.status_code == 201
     lead = o.json()["lead"]
-    assert lead["phone"] == "+998901234567" and lead["extra"]["basket"] and lead["score"] >= 50
+    assert lead["extra"]["basket"] and lead["score"] >= 50 and "phone" not in lead
     assert lead["extra"]["total"] == round(sum(b["price"] for b in scan["basket"]), 2)
-    assert client.get(f"/leads/{lead['id']}").json()["extra"]["scan_id"] == scan["scan_id"]
+    assert main.store.get(lead["id"]).phone == "+998901234567"
+    assert main.store.get(lead["id"]).extra["scan_id"] == scan["scan_id"]
     again = client.post("/orders", json={"name": "D", "phone": "+998901234567", "skus": ["SC-SPF-09"]})
     assert again.json()["created"] is False  # LeadFlow de-dup
 
@@ -42,6 +43,7 @@ def test_validation():
     assert client.post("/orders", json={"name": "X", "phone": "+998901112233", "skus": ["BAD"]}).status_code == 400
     assert client.post("/orders", json={"name": "X", "skus": ["SC-SPF-09"]}).status_code == 422
     assert client.get("/leads/9999").status_code == 404
+    assert client.get("/leads").status_code == 404  # no ADMIN_TOKEN -> listing does not exist
 
 
 def test_telegram_flow_offline():
@@ -56,7 +58,7 @@ def test_telegram_flow_offline():
     contact = {"message": {"chat": chat, "contact": {"first_name": "Aziz", "phone_number": "+998935556677"}}}
     done = client.post("/telegram/webhook", json=contact).json()["sent"][0]["text"]
     assert "Order #" in done
-    leads = client.get("/leads").json()["leads"]
+    leads = [x.__dict__ for x in main.store.list()]
     assert any(x["source"] == "telegram" and x["extra"]["telegram_chat_id"] == 777 for x in leads)
 
 
@@ -85,3 +87,30 @@ def test_tryon_and_order_survive_a_fresh_serverless_instance(tmp_path, monkeypat
                                      "skus": [sku], "skin_profile": scan["concerns"]})
     assert o.status_code == 201 and o.json()["lead"]["extra"]["skin_profile"] == scan["concerns"]
     assert "SkinCart" in client.get("/").text and client.get("/sample.jpg").status_code == 200
+
+
+def test_leads_are_not_public(monkeypatch):
+    client.post("/orders", json={"name": "Private", "phone": "+998901230000", "email": "p@example.com",
+                                 "skus": ["SC-SPF-09"]})
+    for path in ("/leads", "/leads/1"):
+        assert client.get(path).status_code == 404  # ADMIN_TOKEN unset: route hidden
+    monkeypatch.setenv("ADMIN_TOKEN", "s3cret-token")
+    for path in ("/leads", "/leads/1"):
+        assert client.get(path).status_code == 401
+        assert client.get(path, headers={"X-Admin-Token": "wrong"}).status_code == 401
+    ok = client.get("/leads", headers={"X-Admin-Token": "s3cret-token"})
+    assert ok.status_code == 200 and any(x["phone"] == "+998901230000" for x in ok.json()["leads"])
+    assert "+998901230000" not in client.get("/leads").text
+
+
+def test_order_response_never_echoes_another_customers_data():
+    first = client.post("/orders", json={"name": "Victim Name", "phone": "+998909998877",
+                                         "email": "victim@example.com", "skus": ["SC-SPF-09"]})
+    assert first.status_code == 201
+    probe = client.post("/orders", json={"name": "Probe", "phone": "+998 90 999 88 77", "skus": ["SC-LIP-10"]})
+    body = probe.json()
+    assert body["created"] is False
+    text = probe.text
+    assert "Victim" not in text and "victim@example.com" not in text and "+998909998877" not in text
+    assert [b["sku"] for b in body["lead"]["extra"]["basket"]] == ["SC-LIP-10"]  # only this order
+    assert set(body["lead"]) == {"id", "score", "source", "extra"}

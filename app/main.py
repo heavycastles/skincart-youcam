@@ -5,6 +5,7 @@ from __future__ import annotations
 import base64
 import binascii
 import hashlib
+import hmac
 import json
 import os
 import threading
@@ -155,9 +156,26 @@ def create_order(order: OrderIn) -> tuple[dict, bool]:
         lead, created = store.add(order.name, order.source, order.email, order.phone, msg, extra=extra)
     except ValueError as exc:
         raise HTTPException(422, str(exc)) from exc
-    out = lead.__dict__.copy()
-    _notify_n8n({"event": "order", "lead": out})
-    return out, created
+    _notify_n8n({"event": "order", "lead": lead.__dict__.copy()})  # full record stays server-side
+    return order_receipt(lead, extra), created
+
+
+def order_receipt(lead, extra: dict) -> dict:
+    """What the customer sees: only this order. Never the stored lead, which on a de-duplicated
+    phone/email belongs to an earlier customer (name, contacts, previous baskets)."""
+    return {"id": lead.id, "score": lead.score, "source": lead.source,
+            "extra": {"basket": extra["basket"], "total": extra["total"], "skin_profile": extra["skin_profile"]}}
+
+
+def require_admin(request: Request) -> None:
+    """Lead listing holds customers' phones/emails, so it is never public.
+    No ADMIN_TOKEN configured -> the route does not exist (404); wrong/missing token -> 401."""
+    token = os.getenv("ADMIN_TOKEN", "")
+    if not token:
+        raise HTTPException(404, "Not Found")
+    given = request.headers.get("X-Admin-Token", "")
+    if not hmac.compare_digest(given.encode(), token.encode()):
+        raise HTTPException(401, "admin token required")
 
 
 bot = TelegramBot(analyze_image, tryon, create_order, OrderIn)
@@ -216,13 +234,15 @@ def orders(body: OrderIn) -> dict:
 
 
 @app.get("/leads")
-def leads(min_score: int = 0) -> dict:
+def leads(request: Request, min_score: int = 0) -> dict:
+    require_admin(request)
     items = [lead.__dict__ for lead in store.list(min_score)]
     return {"count": len(items), "leads": items}
 
 
 @app.get("/leads/{lead_id}")
-def lead(lead_id: int) -> dict:
+def lead(lead_id: int, request: Request) -> dict:
+    require_admin(request)
     found = store.get(lead_id)
     if not found:
         raise HTTPException(404, "lead not found")

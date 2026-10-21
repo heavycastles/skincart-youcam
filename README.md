@@ -50,7 +50,7 @@ portrait behind the "Use sample photo" button.
 ```bash
 cp .env.example .env               # optional: YOUCAM_API_KEY, TELEGRAM_BOT_TOKEN
 python -m venv .venv && .venv/bin/pip install -r requirements-dev.txt
-.venv/bin/pytest -q                # 19 tests (offline mock)
+.venv/bin/pytest -q                # 21 tests (offline mock)
 .venv/bin/python serve.py          # http://localhost:8080  (mock mode if no key)
 docker compose up --build          # app :8080 + n8n :5678 (import n8n/skincart-orders.json)
 ```
@@ -80,8 +80,9 @@ Never commit `.env` or the API key.
 | GET | `/` | web demo |
 | POST | `/analyze` | `{image_base64\|image_url}` → scores, basket, try-on SKUs |
 | POST | `/tryon` | `{scan_id, sku}` → VTO image URL |
-| POST | `/orders` | `{scan_id, name, phone\|email, skus}` → LeadFlow lead |
-| GET | `/leads` | `/catalog` | `/healthz` | `/version` |
+| POST | `/orders` | `{scan_id, name, phone\|email, skus}` → order receipt (this order only; contacts are never echoed back) |
+| GET | `/catalog` · `/healthz` · `/version` | public |
+| GET | `/leads`, `/leads/{id}` | admin only: header `X-Admin-Token` = `ADMIN_TOKEN` env var (401 otherwise; 404 when `ADMIN_TOKEN` is unset) |
 | POST | `/telegram/webhook` | Bot API updates |
 
 ## Layout
@@ -115,6 +116,8 @@ Hosted on Vercel (Python runtime, FastAPI preset): https://skincart-youcam.verce
 - `.vercelignore` is an allow-list (app, requirements, VERSION, stock face); `.env`, `.venv`, tests, scripts
   and videos are never uploaded.
 - `YOUCAM_API_KEY` is a sensitive project env var, `YOUCAM_MOCK=0`.
+- Customer contacts are private: `/leads` is not exposed on the public demo (no `ADMIN_TOKEN` set → 404),
+  and `POST /orders` returns only a receipt for that order, never a stored lead's name/phone/email.
 - Serverless instances don't share memory, so the browser re-sends the photo / `file_id` with `/tryon` and the
   skin profile with `/orders`; no second skin analysis is needed. Large phone photos are scaled to 2048 px
   in the browser to stay under the request-size limit.
