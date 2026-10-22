@@ -126,9 +126,10 @@ A full first visit with the sample photo is 39 units; repeat visits on a warm in
 ## Submission pack (local)
 
 - Devpost write-up: [`SUBMISSION.md`](SUBMISSION.md)
-- Demo script: [`docs/video-script-v2.md`](docs/video-script-v2.md)
+- Demo script: [`docs/video-script-v3.md`](docs/video-script-v3.md)
 - Slides PDF: [`docs/slides.pdf`](docs/slides.pdf) · cover: [`docs/cover.png`](docs/cover.png)
-- **Demo video v2** (recorded on the live production demo on 22 Oct ~00:50 MSK, before Skin Simulation / shade match were added): [`docs/demo-v2.mp4`](docs/demo-v2.mp4) (2:03, 1080p; subtitles [`docs/demo-v2.srt`](docs/demo-v2.srt), cover [`docs/demo-v2-cover.png`](docs/demo-v2-cover.png), script [`docs/video-script-v2.md`](docs/video-script-v2.md)). Earlier drafts: `docs/demo-live-draft.mp4`, `docs/demo-draft.mp4` (mock)
+- **Demo video v3** (recorded on the live production demo on 22 Oct ~17:05 MSK: Skin Analysis, Skin Simulation, foundation shade match with Facial Color Tones, foundation + lip try-on, AM/PM plan, order): [`docs/demo-v3.mp4`](docs/demo-v3.mp4) (2:10, 1080p; subtitles [`docs/demo-v3.srt`](docs/demo-v3.srt), cover [`docs/demo-v3-cover.png`](docs/demo-v3-cover.png), script [`docs/video-script-v3.md`](docs/video-script-v3.md))
+- Demo video v2 (22 Oct ~00:50 MSK, before Skin Simulation / shade match were added): [`docs/demo-v2.mp4`](docs/demo-v2.mp4) (2:03, 1080p; subtitles [`docs/demo-v2.srt`](docs/demo-v2.srt), cover [`docs/demo-v2-cover.png`](docs/demo-v2-cover.png), script [`docs/video-script-v2.md`](docs/video-script-v2.md)). Earlier drafts: `docs/demo-live-draft.mp4`, `docs/demo-draft.mp4` (mock)
 - Screenshots of the live run: [`docs/screenshots/`](docs/screenshots/)
 - Live YouCam proof: [`docs/live-proof.md`](docs/live-proof.md) (2026-10-19, licensed Unsplash stock face)
 

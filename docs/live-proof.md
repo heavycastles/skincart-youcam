@@ -141,3 +141,21 @@ is not used. `face_quality.faceangle` was "downward" (accepted with `face_angle_
 
 YouCam balance (`GET /s2s/v1.0/client/credit`): 963 before this work, 808 after — **155 units** in total
 (1 pre-change judge run 14 · direct probe 24 · three production verification runs 39 each).
+
+## Demo video v3 recording (Vercel) — 2026-10-22 ~17:05 MSK
+
+Recorded `docs/demo-v3.mp4` on https://skincart-youcam.vercel.app in one take with the sample photo (licensed stock face),
+Chrome at 1280 px:
+
+| Step | Time (client) | Units | Result |
+|---|---|---|---|
+| `/analyze` (File API upload + Skin Analysis) | 5.8 s | 14 | skin score 84: visible pores 70 · dryness 73 · puffy eyes 76 |
+| `/simulate` (Skin Simulation, default basket) | 8.5 s | 4 | visible pores · moderate, dryness · moderate, fine lines · light, loss of firmness · light |
+| `/shade` (Facial Color Tones) | 7.6 s | 20 | skin `#bf9c83` (warm, light), lip `#d1877d`, eyes Brown → **180 Natural**, ΔE 6.1; neighbors 160 Rose Beige / 220 Sand; dewy finish, sheer-to-light coverage |
+| `/tryon` `SC-FND-180` (Makeup VTO, foundation) | ~8.4 s | 1 | rendered |
+| `/tryon` `SC-LIP-15` Petal Nude (Makeup VTO, ranked "for warm") | ~8.2 s | 1 | rendered |
+| `/orders` (Demo Shopper · +1 000 000 0000 · demo@example.com) | <1 s | 0 | receipt: lead #1 · score 65 · 7 items · $120.00 |
+
+"Under the hood" at the end of the session: 26 YouCam API requests · 40 units · mode live.
+YouCam balance (`GET /s2s/v1.0/client/credit`): **808 before → 768 after (40 units)**. A dry run of the recording script
+beforehand used a local mock server only (0 units).
