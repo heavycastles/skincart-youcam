@@ -121,3 +121,23 @@ Recorded `docs/demo-v2.mp4` on https://skincart-youcam.vercel.app with the sampl
 17 YouCam requests in that session. Two more takes of the same photo were served from the in-memory cache
 (0 requests, "Loaded from cache · 0 units used"); one of them supplies the checkout and framing scenes of the video.
 Paid tasks in this run: 1 skin analysis + 2 makeup VTO.
+
+## Skin Simulation + Facial Color Tones + foundation VTO (Vercel) — 2026-10-22 ~12:30–12:40 MSK
+
+New YouCam APIs, first probed directly with the stock face (1 upload + 1 `skin-tone-analysis` + 1 `skin-simulation`
+with 4 concerns), then run on https://skincart-youcam.vercel.app after each deploy (sample photo, Chrome at 1280 px;
+the 375 px run of the same session was served from cache):
+
+| Step | Time (client) | Units | Result |
+|---|---|---|---|
+| `/analyze` (upload + Skin Analysis) | 5.7–6.0 s | 14 | skin score 84: visible pores 70 · dryness 73 · puffy eyes 76 |
+| `/simulate` (Skin Simulation, default basket) | 5.1–5.3 s | 4 | `{pores: 0.4, texture: 0.35, wrinkle: 0.3}` — visible pores, dryness, fine lines, loss of firmness |
+| `/shade` (Facial Color Tones) | 5.1–7.5 s | 20 | skin `#bf9c83` (warm, light, ITA 43), lip `#d1877d`, eyes Brown → **180 Natural**, ΔE 6.1; neighbors 160 Rose Beige / 220 Sand; dewy finish (dryness 73), sheer coverage |
+| `/tryon` `SC-FND-180` (Makeup VTO, foundation) | not timed | 1 | rendered (screenshot 12) |
+| `/orders` | <1 s | 0 | receipt: 6 items · $109.00 |
+
+Raw Facial Color Tones result for the stock face: `hair_color_name: "Blonde"` for dark-brown hair, so hair color
+is not used. `face_quality.faceangle` was "downward" (accepted with `face_angle_strictness_level: "medium"`).
+
+YouCam balance (`GET /s2s/v1.0/client/credit`): 963 before this work, 808 after — **155 units** in total
+(1 pre-change judge run 14 · direct probe 24 · three production verification runs 39 each).

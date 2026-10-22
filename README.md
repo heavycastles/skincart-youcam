@@ -14,9 +14,18 @@ Small cosmetics shops in Central Asia/CIS sell mostly through Telegram and Insta
 1. Customer sends a selfie to the shop's **Telegram bot** (or the web page).
 2. **YouCam AI Skin Analysis API** scores 12 concerns (acne, pores, wrinkles, texture, moisture, oiliness,
    redness, radiance, dark circles, spots, eye bags, firmness).
-3. A matcher builds a routine from the shop's **catalog** (one product per category, weighted by need, always SPF).
-4. Optional **YouCam AI Makeup VTO**: try the shop's lipstick / foundation on the same selfie.
-5. "Order" → contact → saved as a **LeadFlow lead** (normalized, de-duplicated, scored, with `skin_profile` + `basket`)
+3. A matcher builds a routine from the shop's **catalog** (one product per category, weighted by need, always SPF)
+   and a **morning / evening plan** that handles ingredient clashes (retinal at night → salicylic cleanser in the
+   morning, vitamin C under SPF, "no SPF" warning). It updates when the basket changes.
+4. **YouCam AI Skin Simulation** — "Preview what this basket targets": the customer's own photo with only the
+   concerns targeted by the basket's products softened (intensity 0.25–0.7 from the score, concerns below the
+   healthy line only). Change the basket, and the preview changes. Labelled as a simulation, not a promise.
+5. **YouCam AI Facial Color Tones Analyzer** — "Find my foundation shade": skin / lip / eye color from the same
+   upload → undertone (CIELAB hue angle) and depth (ITA) → nearest of the shop's 12 foundation shades (delta-E,
+   undertone-aware) + lighter / deeper neighbors → finish and coverage from the Skin Analysis scores (dry → dewy,
+   oily → matte, visible redness/spots → more coverage). Lip shades are re-ranked for the undertone.
+6. **YouCam AI Makeup VTO**: try the matched foundation (or a neighbor) and the shop's lipsticks on the same selfie.
+7. "Order" → contact → saved as a **LeadFlow lead** (normalized, de-duplicated, scored, with `skin_profile` + `basket`)
    → **n8n** notifies the shop owner and sends a 14-day "re-scan your skin" follow-up.
 
 ## Screenshots (live YouCam API, 19 Oct 2026)
@@ -32,21 +41,32 @@ Taken from the running app with a real `YOUCAM_API_KEY` and a licensed stock por
 | **Upload + scan** | **Order saved as a lead** |
 | ![Upload](docs/screenshots/02-upload-scanning.png) | ![Order](docs/screenshots/08-order-placed.png) |
 
+Added 22 Oct 2026, from the production demo (live API, same stock portrait):
+
+| Skin Simulation of what the basket targets | Foundation shade match (Facial Color Tones) |
+|---|---|
+| ![Skin simulation](docs/screenshots/10-skin-simulation.png) | ![Shade match](docs/screenshots/11-shade-match.png) |
+| **Matched foundation on the photo (Makeup VTO)** | **Morning / evening plan** |
+| ![Foundation try-on](docs/screenshots/12-foundation-tryon.png) | ![AM/PM plan](docs/screenshots/13-am-pm-plan.png) |
+
 ## Architecture
 
 ```
 Telegram bot ──┐
-               ├──► FastAPI  POST /analyze · /tryon · /orders
+               ├──► FastAPI  POST /analyze · /simulate · /shade · /tryon · /orders
 Web demo ──────┘         │
-                         ├─ YouCam client   File API → Skin Analysis → Makeup VTO
-                         ├─ recommend.py + catalog.json
+                         ├─ YouCam client   File API (one file_id) → Skin Analysis · Skin Simulation
+                         │                  · Facial Color Tones · Makeup VTO
+                         ├─ recommend.py + catalog.json (routine, AM/PM plan, simulation intensities)
+                         ├─ shade.py (CIELAB / ITA shade match, formula, lip ranking)
                          ├─ LeadStore (normalize / de-dupe / score + extra)
                          └─ n8n webhook (owner alert + day-14 re-scan)
 ```
 
 Without `YOUCAM_API_KEY` (or with `YOUCAM_MOCK=1`) the client returns deterministic mock scores and a synthetic
 SVG try-on preview — tests and demos run offline. Results are cached per image hash so re-scans cost 0 units, and
-each photo is uploaded once: its `file_id` is reused by every try-on. `GET /sample.jpg` serves the licensed stock
+each photo is uploaded once: its `file_id` is reused by every task (simulation, color tones, try-ons). Every
+response carries `units` (YouCam units spent; 0 when cached) and the page totals them. `GET /sample.jpg` serves the licensed stock
 portrait behind the "Use sample photo" button.
 
 ## Run
@@ -54,7 +74,7 @@ portrait behind the "Use sample photo" button.
 ```bash
 cp .env.example .env               # optional: YOUCAM_API_KEY, TELEGRAM_BOT_TOKEN
 python -m venv .venv && .venv/bin/pip install -r requirements-dev.txt
-.venv/bin/pytest -q                # 40 tests (offline mock)
+.venv/bin/pytest -q                # 58 tests (offline mock)
 .venv/bin/python serve.py          # http://localhost:8080  (mock mode if no key)
 docker compose up --build          # app :8080 + n8n :5678 (import n8n/skincart-orders.json)
 ```
@@ -75,7 +95,13 @@ Never commit `.env` or the API key.
 | Auth | `Authorization: Bearer $YOUCAM_API_KEY`, server `https://yce-api-01.makeupar.com` |
 | Upload | `POST /s2s/v2.0/file` → `file_id` + presigned `PUT` URL → upload bytes (key is never sent to the bucket) |
 | Skin analysis | `POST /s2s/v2.0/task/skin-analysis` `{src_file_id, dst_actions[12 SD], format:"json"}` → poll `GET …/{task_id}` → `results.output[].ui_score` |
+| Skin Simulation | `POST /s2s/v2.0/task/skin-simulation` `{src_file_id, pores:0.4, texture:0.35, wrinkle:0.3, …}` (only concerns the basket targets; `oiliness` is left out because that knob adds shine) → poll → `results.url` |
+| Facial Color Tones | `POST /s2s/v2.0/task/skin-tone-analysis` `{src_file_id, face_angle_strictness_level:"medium"}` → poll → `results.color.{skin_color, lip_color, eye_color_name}` (hair color is ignored: it was wrong on our test face) |
 | Makeup VTO | `POST /s2s/v2.0/task/makeup-vto` `{src_file_id, effects:[lip_color/foundation], version:"1.0"}` → poll → result URL |
+
+Units per successful task (from `GET /s2s/v2.0/credit/feature-cost`, Oct 2026): Skin Analysis SD 9–12 concerns 14 ·
+Skin Simulation 4 (1–4 concerns) / 6 (5–10) · Facial Color Tones 20 · Makeup VTO 1. Failed tasks cost nothing.
+A full first visit with the sample photo is 39 units; repeat visits on a warm instance are 0.
 
 ## API
 
@@ -83,7 +109,9 @@ Never commit `.env` or the API key.
 |---|---|---|
 | GET | `/` | web demo |
 | POST | `/analyze` | `{image_base64\|image_url}` → scores, basket, try-on SKUs |
-| POST | `/tryon` | `{scan_id, sku}` → VTO image URL |
+| POST | `/simulate` | `{scan_id, skus, scores?}` → Skin Simulation image URL + intensities + targeted concerns |
+| POST | `/shade` | `{scan_id, scores?}` → skin/lip color, undertone, depth, matched shade + neighbors + 12-shade range, finish/coverage, ranked lip shades |
+| POST | `/tryon` | `{scan_id, sku}` → VTO image URL (lip shades and any foundation shade) |
 | POST | `/orders` | `{scan_id, name, phone\|email, skus}` → order receipt (this order only; contacts are never echoed back) |
 | GET | `/catalog` · `/healthz` · `/version` | public |
 | GET | `/leads`, `/leads/{id}` | admin only: header `X-Admin-Token` = `ADMIN_TOKEN` env var (401 otherwise; 404 when `ADMIN_TOKEN` is unset) |
@@ -91,7 +119,8 @@ Never commit `.env` or the API key.
 
 ## Layout
 
-`app/youcam.py` client · `app/recommend.py` + `app/catalog.json` matcher · `app/leads.py` LeadFlow store
+`app/youcam.py` client · `app/recommend.py` + `app/catalog.json` matcher, AM/PM plan, simulation plan ·
+`app/shade.py` shade match · `app/leads.py` LeadFlow store
 (extended with `extra`) · `app/telegram.py` bot · `app/static/index.html` web UI · `n8n/` workflow · `tests/`.
 
 ## Submission pack (local)
@@ -99,7 +128,7 @@ Never commit `.env` or the API key.
 - Devpost write-up: [`SUBMISSION.md`](SUBMISSION.md)
 - Demo script: [`docs/video-script-v2.md`](docs/video-script-v2.md)
 - Slides PDF: [`docs/slides.pdf`](docs/slides.pdf) · cover: [`docs/cover.png`](docs/cover.png)
-- **Demo video v2** (recorded on the live production demo): [`docs/demo-v2.mp4`](docs/demo-v2.mp4) (2:03, 1080p; subtitles [`docs/demo-v2.srt`](docs/demo-v2.srt), cover [`docs/demo-v2-cover.png`](docs/demo-v2-cover.png), script [`docs/video-script-v2.md`](docs/video-script-v2.md)). Earlier drafts: `docs/demo-live-draft.mp4`, `docs/demo-draft.mp4` (mock)
+- **Demo video v2** (recorded on the live production demo on 22 Oct ~00:50 MSK, before Skin Simulation / shade match were added): [`docs/demo-v2.mp4`](docs/demo-v2.mp4) (2:03, 1080p; subtitles [`docs/demo-v2.srt`](docs/demo-v2.srt), cover [`docs/demo-v2-cover.png`](docs/demo-v2-cover.png), script [`docs/video-script-v2.md`](docs/video-script-v2.md)). Earlier drafts: `docs/demo-live-draft.mp4`, `docs/demo-draft.mp4` (mock)
 - Screenshots of the live run: [`docs/screenshots/`](docs/screenshots/)
 - Live YouCam proof: [`docs/live-proof.md`](docs/live-proof.md) (2026-10-19, licensed Unsplash stock face)
 
@@ -122,8 +151,8 @@ Hosted on Vercel (Python runtime, FastAPI preset): https://skincart-youcam.verce
 - `YOUCAM_API_KEY` is a sensitive project env var, `YOUCAM_MOCK=0`.
 - Customer contacts are private: `/leads` is not exposed on the public demo (no `ADMIN_TOKEN` set → 404),
   and `POST /orders` returns only a receipt for that order, never a stored lead's name/phone/email.
-- Serverless instances don't share memory, so the browser re-sends the photo / `file_id` with `/tryon` and the
-  skin profile with `/orders`; no second skin analysis is needed. Large phone photos are scaled to 2048 px
+- Serverless instances don't share memory, so the browser re-sends the photo / `file_id` (and the skin scores)
+  with `/tryon`, `/simulate` and `/shade`, and the skin profile with `/orders`; no second skin analysis is needed. Large phone photos are scaled to 2048 px
   in the browser to stay under the request-size limit.
 
 ```bash
@@ -136,4 +165,5 @@ curl https://skincart-youcam.vercel.app/healthz   # {"status":"ok","youcam":"liv
 ## License
 
 Built on our earlier LeadFlow FastAPI service (lead normalize/de-dup/scoring); the YouCam client, recommender,
-try-on, Telegram bot, web UI and n8n follow-up are new for this hackathon. Not medical advice. MIT License — see `LICENSE`.
+skin simulation, shade match, try-on, Telegram bot, web UI and n8n follow-up are new for this hackathon. The Telegram
+bot covers analysis, lip try-on and order; Skin Simulation and the shade match are in the web flow. Not medical advice. MIT License — see `LICENSE`.

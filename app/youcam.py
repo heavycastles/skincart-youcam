@@ -8,6 +8,9 @@ Docs: https://docs.perfectcorp.com/develop/quick_start_guide
     data.results.output[{type, ui_score, raw_score, mask_urls}]
   * ``POST /s2s/v2.0/task/makeup-vto`` {src_file_id|src_file_url, effects:[...], version:"1.0"}; GET .../{task_id}
     -> data.results.url (or results[0].download_url)
+  * ``POST /s2s/v2.0/task/skin-tone-analysis`` {src_file_id, face_angle_strictness_level} (Facial Color Tones
+    Analyzer) -> data.results.color.{skin_color, lip_color, eye_color(_name), eyebrow_color, hair_color(_name)}
+  * ``POST /s2s/v2.0/task/skin-simulation`` {src_file_id, <concern>: 0.0-1.0, ...} -> result image URL
 
 Mock mode (no key, or YOUCAM_MOCK=1) returns deterministic results derived from the image bytes, so
 tests and the demo run offline without spending units. Stdlib-only HTTP to keep the image small.
@@ -28,6 +31,27 @@ from dataclasses import dataclass
 DEFAULT_BASE = "https://yce-api-01.makeupar.com"
 SD_ACTIONS = ["acne", "pore", "wrinkle", "texture", "moisture", "oiliness", "redness", "radiance",
               "dark_circle_v2", "age_spot", "eye_bag", "firmness"]
+
+
+# Skin Simulation knobs (oiliness is left out on purpose: in that API a higher value *adds* shine).
+SIM_KEYS = ("wrinkle", "radiance", "acne", "eye_bags", "dark_circle", "spots", "pores", "texture", "redness")
+_HEX = re.compile(r"#[0-9a-fA-F]{6}")
+
+
+def _result_url(data: dict, task: str) -> str:
+    res = data.get("results")
+    if isinstance(res, dict):
+        for key in ("url", "download_url"):
+            if res.get(key):
+                return res[key]
+        out = res.get("output")
+        if isinstance(out, list) and out and isinstance(out[0], dict):
+            return out[0].get("url") or out[0].get("download_url") or ""
+    if isinstance(res, list) and res and isinstance(res[0], dict):
+        found = res[0].get("download_url") or res[0].get("url")
+        if found:
+            return found
+    raise YouCamError(f"{task}: no result url in response", "bad_response")
 
 
 class YouCamError(RuntimeError):
@@ -197,11 +221,58 @@ class YouCamClient:
             return res[0].get("download_url") or res[0].get("url")
         raise YouCamError(f"makeup-vto: no result url in {data}")
 
+    def skin_tone(self, image: bytes | None = None, url: str | None = None, content_type: str = "image/jpeg",
+                  file_id: str | None = None) -> dict:
+        """Facial Color Tones Analyzer: hex colors of skin, lips, eyes, brows and hair (one task, reuses file_id)."""
+        if self.mock:
+            return _mock_tone(image or (url or "").encode())
+        if not file_id and image and not url:
+            file_id = self.upload(image, content_type)
+        data = self._run_task("skin-tone-analysis", {**self._src(file_id, url),
+                                                     "face_angle_strictness_level": "medium"})
+        color = (data.get("results") or {}).get("color") or {}
+        if not _HEX.fullmatch(str(color.get("skin_color") or "")):
+            raise YouCamError("skin-tone-analysis: no skin_color in result", "bad_response")
+        return {k: color.get(k) for k in ("skin_color", "lip_color", "eye_color", "eye_color_name",
+                                          "eyebrow_color", "hair_color", "hair_color_name")}
+
+    def skin_simulation(self, intensities: dict[str, float], image: bytes | None = None, url: str | None = None,
+                        content_type: str = "image/jpeg", file_id: str | None = None) -> str:
+        """Skin Simulation: render the photo with the given concerns visibly improved (0.0-1.0 each)."""
+        params = {k: round(float(v), 2) for k, v in intensities.items() if k in SIM_KEYS and float(v) > 0}
+        if not params:
+            raise ValueError("skin simulation needs at least one non-zero concern")
+        if self.mock:
+            return _mock_sim(params)
+        if not file_id and image and not url:
+            file_id = self.upload(image, content_type)
+        data = self._run_task("skin-simulation", {**self._src(file_id, url), **params})
+        return _result_url(data, "skin-simulation")
+
 
 def _mock_skin(seed: bytes, actions: list[str]) -> list[SkinConcern]:
     digest = hashlib.sha256(seed).digest()
     return [SkinConcern(a, 35 + digest[i % 32] % 61, round(20 + digest[(i + 7) % 32] / 3.2, 2), [])
             for i, a in enumerate(actions)]
+
+
+_MOCK_SKINS = ["#f0d3c2", "#e3bc9d", "#d6ab8d", "#c99d7c", "#b88a66", "#a07052", "#7d5640", "#5a3b2c"]
+
+
+def _mock_tone(seed: bytes) -> dict:
+    """Deterministic, plausible colors (a real skin tone from light to deep) for offline runs."""
+    d = hashlib.sha256(b"tone" + seed).digest()
+    return {"skin_color": _MOCK_SKINS[d[0] % len(_MOCK_SKINS)], "lip_color": "#c9877b", "eye_color": "#5b3a29",
+            "eye_color_name": "Brown", "eyebrow_color": "#3b2a20", "hair_color": "#42280E",
+            "hair_color_name": "Brown"}
+
+
+def _mock_sim(params: dict) -> str:
+    label = ", ".join(f"{k} {v:.2f}" for k, v in params.items())
+    svg = ("<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><rect width='240' height='240' "
+           "fill='#fbeee6'/><ellipse cx='120' cy='110' rx='70' ry='90' fill='#f1cdb5'/><text x='120' y='225' "
+           f"font-size='10' text-anchor='middle'>mock simulation: {label}</text></svg>")
+    return "data:image/svg+xml;utf8," + urllib.request.quote(svg)
 
 
 def _mock_vto(effects: list[dict]) -> str:

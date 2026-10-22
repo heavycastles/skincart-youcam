@@ -60,7 +60,7 @@ def recommend(scores: list[SkinConcern], limit: int = 4) -> list[dict]:
                 {
                     **{k: p[k] for k in ("sku", "name", "category", "price")},
                     "match": weight,
-                    "reason": f"{p['why']} - helps with {', '.join(hits)}",
+                    "reason": f"{p['why'][0].upper()}{p['why'][1:]} - helps with {', '.join(hits)}",
                 }
             )
     ranked.sort(key=lambda r: (-r["match"], r["price"]))
@@ -77,16 +77,93 @@ def recommend(scores: list[SkinConcern], limit: int = 4) -> list[dict]:
             {
                 **{k: spf[k] for k in ("sku", "name", "category", "price")},
                 "match": 0,
-                "reason": "every routine needs daily SPF",
+                "reason": "Every routine needs daily SPF",
             }
         )
     return basket
 
 
 def vto_products() -> list[dict]:
+    """Lip shades to try on. Foundation shades are not listed: the shade match picks the one that fits."""
     return [{"sku": p["sku"], "name": p["name"], "price": p["price"], "kind": p["vto"]["category"],
-             "swatch": (p["vto"].get("palettes") or [{}])[0].get("color", "#c2185b")}
-            for p in CATALOG if p.get("vto")]
+             "family": p.get("family"), "swatch": (p["vto"].get("palettes") or [{}])[0].get("color", "#c2185b")}
+            for p in CATALOG if p.get("vto") and not p.get("shade")]
+
+
+# ---------- AM / PM plan: how to use the basket, with the usual ingredient clashes handled ----------
+STEP_ORDER = ["cleanser", "serum", "treatment", "eye", "moisturizer", "spf"]
+WHEN = {"SC-CLN-01": "both", "SC-SER-02": "both", "SC-SER-03": "both", "SC-SER-04": "am", "SC-NGT-05": "pm",
+        "SC-EYE-06": "both", "SC-MST-07": "both", "SC-CIC-08": "both", "SC-SPF-09": "am"}
+
+
+def schedule(skus: list[str]) -> dict:
+    """Morning / evening steps for the skincare items in the basket (makeup is ignored) + usage notes.
+    Mirrors the rules the web UI applies when the basket changes."""
+    items = [p for p in (get_product(s) for s in skus) if p and p["sku"] in WHEN]
+    items.sort(key=lambda p: STEP_ORDER.index(p["category"]) if p["category"] in STEP_ORDER else 99)
+    has = {p["sku"] for p in items}
+    retinal, bha = "SC-NGT-05" in has, "SC-CLN-01" in has
+    am, pm, notes = [], [], []
+    for p in items:
+        when = WHEN[p["sku"]]
+        if p["sku"] == "SC-CLN-01" and retinal:
+            when = "am"  # two exfoliants on the same night irritate; BHA moves to the morning
+        if when in ("am", "both"):
+            am.append(p["name"])
+        if when in ("pm", "both"):
+            pm.append(p["name"])
+    if retinal and bha:
+        notes.append("Salicylic cleanser in the morning, retinal at night - two exfoliants in one evening irritate. "
+                     "In the evening just rinse, or use a gentle non-exfoliating cleanser.")
+    if retinal:
+        notes.append("Start retinal 2-3 nights a week, then build up; it makes skin sun-sensitive, "
+                     "so SPF every morning.")
+    if "SC-SER-04" in has:
+        notes.append("Vitamin C in the morning, under SPF - it boosts UV protection.")
+    if "SC-SPF-09" in has:
+        notes.append("Reapply SPF every 2 hours when you're outdoors.")
+    if items and "SC-SPF-09" not in has:
+        notes.append("No SPF in the basket - add one, or the routine works against the sun.")
+    return {"am": am, "pm": pm, "notes": notes}
+
+
+# ---------- Skin Simulation plan: preview only what the basket actually targets ----------
+CONCERN_TO_SIM = {"pore": "pores", "wrinkle": "wrinkle", "texture": "texture", "radiance": "radiance",
+                  "acne": "acne", "eye_bag": "eye_bags", "dark_circle_v2": "dark_circle", "age_spot": "spots",
+                  "redness": "redness", "firmness": "wrinkle", "moisture": "texture"}
+SIM_MAX = 0.7  # never the full "airbrushed" 1.0: a routine softens concerns, it doesn't erase them
+
+
+def sim_intensity(ui_score: int) -> float:
+    """Worse score -> stronger (but capped) simulated improvement; healthy concerns get a light maintenance touch."""
+    if ui_score >= CONCERN_THRESHOLD:
+        return 0.2
+    return round(min(SIM_MAX, 0.25 + (CONCERN_THRESHOLD - ui_score) * 0.015) * 20) / 20
+
+
+def simulation_plan(scores: list[dict], skus: list[str]) -> dict:
+    """Concerns targeted by the skincare products in the basket -> Skin Simulation intensities.
+    Returns {"params": {sim_key: 0.2-0.7}, "concerns": [{type,label,ui_score,intensity,products}]}."""
+    by = {s["type"]: int(s["ui_score"]) for s in scores if isinstance(s, dict) and "type" in s and "ui_score" in s}
+    targeted: dict[str, list[str]] = {}
+    for sku in skus:
+        p = get_product(sku)
+        if not p or p.get("vto"):
+            continue
+        for t in p["targets"]:
+            if t in by and t in CONCERN_TO_SIM:
+                targeted.setdefault(t, []).append(p["name"])
+    needed = {t: v for t, v in targeted.items() if by[t] < CONCERN_THRESHOLD}
+    if not needed:  # healthy skin: a light maintenance preview of the (up to) 3 lowest targeted concerns
+        needed = dict(sorted(targeted.items(), key=lambda kv: by[kv[0]])[:3])
+    params: dict[str, float] = {}
+    concerns_out = []
+    for t, products in sorted(needed.items(), key=lambda kv: by[kv[0]]):
+        k, v = CONCERN_TO_SIM[t], sim_intensity(by[t])
+        params[k] = max(params.get(k, 0), v)
+        concerns_out.append({"type": t, "label": LABELS.get(t, t), "ui_score": by[t], "intensity": v,
+                             "products": products})
+    return {"params": dict(sorted(params.items())), "concerns": concerns_out}
 
 
 def get_product(sku: str) -> dict | None:

@@ -22,6 +22,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, Field
 
 from app import recommend as rec
+from app import shade as shade_mod
 from app.leads import LeadStore
 from app.telegram import TelegramBot
 from app.youcam import YouCamClient, YouCamError
@@ -148,15 +149,32 @@ class AnalyzeIn(BaseModel):
     content_type: str = "image/jpeg"
 
 
-class TryOnIn(BaseModel):
-    scan_id: str
-    sku: str
-    # Serverless hosts may route the try-on to a fresh instance that never saw /analyze.
+class ScanRef(BaseModel):
+    scan_id: str = Field(min_length=1, max_length=64)
+    # Serverless hosts may route a follow-up call to a fresh instance that never saw /analyze.
     # The browser then re-sends what it already has, so no second skin analysis is needed.
-    file_id: str | None = None
+    file_id: str | None = Field(default=None, max_length=512)
     image_base64: str | None = None
     image_url: str | None = None
     content_type: str = "image/jpeg"
+
+
+class TryOnIn(ScanRef):
+    sku: str
+
+
+class ScoreIn(BaseModel):
+    type: str = Field(max_length=40)
+    ui_score: int = Field(ge=0, le=100)
+
+
+class ShadeIn(ScanRef):
+    scores: list[ScoreIn] | None = Field(default=None, max_length=20)  # used if the scan isn't in memory
+
+
+class SimulateIn(ScanRef):
+    skus: list[str] = Field(min_length=1, max_length=30)
+    scores: list[ScoreIn] | None = Field(default=None, max_length=20)
 
 
 class OrderIn(BaseModel):
@@ -202,7 +220,7 @@ def analyze_image(image: bytes | None, url: str | None, content_type: str = "ima
         content_type = check_image(image)
     scan_id = _scan_id(image, url)
     if scan_id in scans and scans[scan_id].get("result"):
-        return scans[scan_id]["result"] | {"cached": True, "api_calls": 0}
+        return scans[scan_id]["result"] | {"cached": True, "api_calls": 0, "units": 0}
     started, file_id, calls0 = time.monotonic(), None, youcam.calls
     youcam.begin()
     try:
@@ -218,7 +236,8 @@ def analyze_image(image: bytes | None, url: str | None, content_type: str = "ima
     result = {"scan_id": scan_id, "mode": "mock" if youcam.mock else "live",
               "scores": [s.__dict__ | {"label": rec.LABELS.get(s.type, s.type)} for s in scores],
               "skin_score": rec.skin_score(scores), "concerns": rec.concerns(scores),
-              "basket": rec.recommend(scores), "tryon": rec.vto_products(), "cached": False,
+              "basket": (basket := rec.recommend(scores)), "tryon": rec.vto_products(), "cached": False,
+              "schedule": rec.schedule([b["sku"] for b in basket]), "units": _units("skin_analysis"),
               "file_id": file_id, "api_calls": youcam.calls - calls0,
               "elapsed_ms": round((time.monotonic() - started) * 1000)}
     scans[scan_id] = {"image": image, "url": url, "content_type": content_type, "file_id": file_id,
@@ -226,8 +245,9 @@ def analyze_image(image: bytes | None, url: str | None, content_type: str = "ima
     return result
 
 
-def tryon(scan_id: str, sku: str, fallback: TryOnIn | None = None) -> dict:
-    scan, product = scans.get(scan_id), rec.get_product(sku)
+def resolve_scan(scan_id: str, fallback: ScanRef | None = None) -> dict:
+    """The cached scan, or one rebuilt from what the browser re-sent (fresh serverless instance)."""
+    scan = scans.get(scan_id)
     if not scan and fallback and (fallback.file_id or fallback.image_base64 or fallback.image_url):
         image = _decode_b64(fallback.image_base64) if fallback.image_base64 else None
         if image is not None and len(image) > MAX_IMAGE:
@@ -239,26 +259,89 @@ def tryon(scan_id: str, sku: str, fallback: TryOnIn | None = None) -> dict:
                                           "file_id": fallback.file_id, "result": None})
     if not scan:
         raise HTTPException(404, "This analysis has expired. Please analyze your photo again.")
+    return scan
+
+
+def run_on_scan(scan: dict, call):
+    """Run one paid YouCam task on the scan's uploaded file; if the file_id expired, upload once more."""
+    args = {"image": scan["image"], "url": scan["url"], "content_type": scan["content_type"]}
+    youcam.begin()
+    try:
+        try:
+            return call(file_id=scan.get("file_id"), **args)
+        except YouCamError as exc:
+            if not scan.get("file_id") or exc.code == "timeout" or not (scan["image"] or scan["url"]):
+                raise
+            return call(**args)  # file expired -> upload again
+    except YouCamError as exc:
+        raise youcam_http_error(exc) from exc
+    finally:
+        youcam.end()
+
+
+def tryon(scan_id: str, sku: str, fallback: TryOnIn | None = None) -> dict:
+    scan, product = resolve_scan(scan_id, fallback), rec.get_product(sku)
     if not product or not product.get("vto"):
         raise HTTPException(400, "This product has no virtual try-on.")
     key = f"vto:{sku}"
-    calls0, started = youcam.calls, time.monotonic()
-    if key not in scan:
-        args = {"image": scan["image"], "url": scan["url"], "content_type": scan["content_type"]}
-        youcam.begin()
-        try:
-            try:
-                scan[key] = youcam.makeup_vto([product["vto"]], file_id=scan.get("file_id"), **args)
-            except YouCamError as exc:
-                if not scan.get("file_id") or exc.code == "timeout" or not (scan["image"] or scan["url"]):
-                    raise
-                scan[key] = youcam.makeup_vto([product["vto"]], **args)  # file expired -> upload again
-        except YouCamError as exc:
-            raise youcam_http_error(exc) from exc
-        finally:
-            youcam.end()
+    calls0, started, cached = youcam.calls, time.monotonic(), key in scan
+    if not cached:
+        scan[key] = run_on_scan(scan, lambda **kw: youcam.makeup_vto([product["vto"]], **kw))
     return {"scan_id": scan_id, "sku": sku, "image_url": scan[key], "api_calls": youcam.calls - calls0,
+            "cached": cached, "units": 0 if cached else _units("makeup_vto"),
             "elapsed_ms": round((time.monotonic() - started) * 1000)}
+
+
+# YouCam unit price per successful task (GET /s2s/v2.0/credit/feature-cost, Oct 2026). Shown in the UI.
+UNITS = {"skin_analysis": 14, "makeup_vto": 1, "skin_tone": 20, "skin_simulation_1_4": 4, "skin_simulation_5_10": 6}
+
+
+def _units(task: str) -> int:
+    return 0 if youcam.mock else UNITS[task]
+
+
+def _scores_for(scan: dict, sent: list[ScoreIn] | None) -> list[dict]:
+    result = scan.get("result") or {}
+    if result.get("scores"):
+        return [{"type": s["type"], "ui_score": s["ui_score"]} for s in result["scores"]]
+    return [s.model_dump() for s in (sent or []) if s.type in rec.LABELS]
+
+
+def shade_match(body: ShadeIn) -> dict:
+    """Facial Color Tones Analyzer -> undertone, depth, nearest foundation shade, formula and lip ranking."""
+    scan = resolve_scan(body.scan_id, body)
+    calls0, started, cached = youcam.calls, time.monotonic(), "tones" in scan
+    if not cached:
+        scan["tones"] = run_on_scan(scan, youcam.skin_tone)
+    try:
+        result = shade_mod.match(scan["tones"], _scores_for(scan, body.scores))
+    except ValueError as exc:
+        raise HTTPException(502, "YouCam couldn't read a skin color from this photo. "
+                                 "Please try another selfie.") from exc
+    return result | {"scan_id": body.scan_id, "mode": "mock" if youcam.mock else "live", "cached": cached,
+                     "api_calls": youcam.calls - calls0, "units": 0 if cached else _units("skin_tone"),
+                     "elapsed_ms": round((time.monotonic() - started) * 1000)}
+
+
+def simulate(body: SimulateIn) -> dict:
+    """Skin Simulation of only the concerns the basket's skincare products target (cached per intensity set)."""
+    if any(rec.get_product(s) is None for s in body.skus):
+        raise HTTPException(400, "One of the products is no longer in the catalog. Please reload the page.")
+    scan = resolve_scan(body.scan_id, body)
+    scores = _scores_for(scan, body.scores)
+    if not scores:
+        raise HTTPException(422, "Please analyze your photo first, so we know what the routine should target.")
+    plan = rec.simulation_plan(scores, body.skus)
+    if not plan["params"]:
+        raise HTTPException(422, "Add a skincare product to your basket to preview what it targets.")
+    key = "sim:" + ",".join(f"{k}={v:.2f}" for k, v in plan["params"].items())
+    calls0, started, cached = youcam.calls, time.monotonic(), key in scan
+    if not cached:
+        scan[key] = run_on_scan(scan, lambda **kw: youcam.skin_simulation(plan["params"], **kw))
+    tier = "skin_simulation_1_4" if len(plan["params"]) <= 4 else "skin_simulation_5_10"
+    return {"scan_id": body.scan_id, "image_url": scan[key], "params": plan["params"], "concerns": plan["concerns"],
+            "mode": "mock" if youcam.mock else "live", "cached": cached, "api_calls": youcam.calls - calls0,
+            "units": 0 if cached else _units(tier), "elapsed_ms": round((time.monotonic() - started) * 1000)}
 
 
 EMAIL_RE = re.compile(r"[^@\s]+@[^@\s]+\.[^@\s]+")
@@ -314,6 +397,7 @@ _FIELD_MESSAGES = {
     "email": "That email is too long.",
     "scan_id": "Please analyze a photo first.",
     "sku": "Please pick a shade to try on.",
+    "scores": "The skin scores sent with this request are invalid. Please analyze your photo again.",
 }
 
 
@@ -378,6 +462,16 @@ def analyze(body: AnalyzeIn) -> dict:
 @app.post("/tryon")
 def tryon_endpoint(body: TryOnIn) -> dict:
     return tryon(body.scan_id, body.sku, body)
+
+
+@app.post("/shade")
+def shade_endpoint(body: ShadeIn) -> dict:
+    return shade_match(body)
+
+
+@app.post("/simulate")
+def simulate_endpoint(body: SimulateIn) -> dict:
+    return simulate(body)
 
 
 @app.post("/orders", status_code=201)
