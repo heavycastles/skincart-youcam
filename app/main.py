@@ -348,7 +348,7 @@ EMAIL_RE = re.compile(r"[^@\s]+@[^@\s]+\.[^@\s]+")
 
 
 def create_order(order: OrderIn) -> tuple[dict, bool]:
-    items = [rec.get_product(s) for s in order.skus]
+    items = [rec.get_product(s) for s in dict.fromkeys(order.skus)]  # a repeated SKU is one product, not two
     if any(i is None for i in items):
         raise HTTPException(400, "One of the products is no longer in the catalog. Please reload the page.")
     name = order.name.strip() or "Guest"

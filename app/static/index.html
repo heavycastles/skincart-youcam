@@ -139,7 +139,9 @@ footer{border-top:1px solid var(--line);padding:22px 0 30px;color:var(--muted);f
 .range{display:grid;grid-template-columns:repeat(12,1fr);gap:6px;margin:6px 0 4px}
 .range button{position:relative;aspect-ratio:1/1.5;border-radius:10px;border:1px solid rgba(0,0,0,.06);cursor:pointer;padding:0}
 .range button.match{outline:3px solid var(--rose);outline-offset:2px}.range button.nb{outline:2px dashed #d9a3b8;outline-offset:2px}
-.rangeLbl{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:14px}
+.rangeLbl{display:flex;justify-content:space-between;gap:8px;font-size:11px;color:var(--muted);margin-bottom:14px}.rangeLbl .mid{text-align:center}
+.line .lr{display:flex;align-items:center;gap:6px;flex:none}.rm{border:0;background:none;color:var(--muted);font-size:18px;line-height:1;width:26px;height:26px;border-radius:8px;cursor:pointer;padding:0}.rm:hover{background:#f6eef1;color:var(--hi)}
+.shadeNote{margin:6px 0 0}
 .matchCard{display:flex;gap:14px;align-items:center;border:1px solid #f0b9cb;background:#fffafb;border-radius:16px;padding:14px;flex-wrap:wrap}
 .matchCard i{width:54px;height:54px;border-radius:14px;flex:none;box-shadow:0 0 0 1px rgba(0,0,0,.06)}
 .matchCard .mc{flex:1 1 200px}.matchCard h4{margin:0;font-size:16px}.matchCard p{margin:3px 0 0;font-size:13px;color:var(--muted)}
@@ -149,7 +151,7 @@ footer{border-top:1px solid var(--line);padding:22px 0 30px;color:var(--muted);f
 .formula{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}.formula div{border:1px solid var(--line);border-radius:14px;padding:11px 13px}.formula small{display:block;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--rose)}.formula b{font-weight:600}.formula p{margin:3px 0 0;font-size:12.5px;color:var(--muted)}
 .tag{display:inline-block;font-size:10.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;border-radius:6px;padding:2px 6px;margin-left:6px;background:#e6f6ef;color:var(--ok);vertical-align:middle}
 @media(max-width:960px){.simRes,.formula{grid-template-columns:1fr}}
-@media(max-width:520px){.plan{grid-template-columns:1fr}.range{grid-template-columns:repeat(6,1fr)}.tone{grid-template-columns:1fr}}
+@media(max-width:520px){.plan{grid-template-columns:1fr}.range{gap:3px}.range button{aspect-ratio:1/2;border-radius:7px}.range button.match{outline-offset:1px}.tone{grid-template-columns:1fr}}
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
 @media(max-width:520px){.wrap{padding:0 16px}h1{font-size:34px}.fc{min-width:0;flex:1 1 130px}.card{padding:18px}.masks{gap:8px}.navlink{display:none}}
 @media(max-width:960px){.hero,.grid,.vto{grid-template-columns:1fr}.tiles{grid-template-columns:repeat(2,1fr)}.prods{grid-template-columns:1fr}h1{font-size:40px}.side{position:static}.summary{grid-template-columns:1fr}}
@@ -218,15 +220,15 @@ footer{border-top:1px solid var(--line);padding:22px 0 30px;color:var(--muted);f
    <p class="formerr" id="shadeErr" role="alert"></p>
    <div id="shadeRes" hidden>
     <div class="tone"><div class="toneSw"><i id="skinSw" aria-hidden="true"></i><div><small>Your skin, measured</small><b id="skinHex"></b></div></div><div class="facts" id="toneFacts"></div></div>
-    <div class="range" id="range" role="group" aria-label="Foundation shade range"></div><div class="rangeLbl"><span>Lightest</span><span>Deepest</span></div>
+    <div class="range" id="range" role="group" aria-label="Foundation shade range"></div><div class="rangeLbl"><span>← Lightest</span><span class="mid">Tap any shade to try it on</span><span>Deepest →</span></div>
     <div class="matchCard" id="matchCard"></div>
     <div class="alts" id="alts"></div>
     <div class="formula" id="formula"></div>
-    <span class="units" id="shadeUnits"></span>
+    <span class="units" id="shadeUnits"></span><p class="disc shadeNote">Measured from your photo; lighting can shift it, so the neighboring shades are one tap away.</p>
    </div>
   </div>
   <div class="card" id="tryCard">
-   <div class="hd"><div><h2 class="serif">Virtual try-on</h2><p class="sub">Shades from the shop, rendered on your photo by YouCam AI Makeup VTO. Drag to compare.</p></div><span class="pill" id="vtoPill">Makeup VTO</span></div>
+   <div class="hd"><div><h2 class="serif">Virtual try-on</h2><p class="sub">Shades from the shop, rendered on your photo by YouCam AI Makeup VTO. Drag to compare. The shade you try goes into your basket; trying another lip shade swaps it.</p></div><span class="pill" id="vtoPill">Makeup VTO</span></div>
    <div class="vto"><div class="cmp" id="cmp"><img id="before" alt="Your photo before try-on"><img id="after" class="after" alt="Your photo with the selected shade" hidden><div class="handle" id="handle" hidden></div>
      <span class="lbl" style="left:12px">Before</span><span class="lbl" id="afterLbl" style="right:12px" hidden>After</span>
      <div class="empty" id="cmpEmpty">Pick a shade to see it on your photo</div><input type="range" id="slider" min="0" max="100" value="50" hidden aria-label="Compare before and after"></div>
@@ -260,7 +262,8 @@ footer{border-top:1px solid var(--line);padding:22px 0 30px;color:var(--muted);f
 </main>
 <footer><div class="wrap">SkinCart · built on the YouCam Skin Analysis, Skin Simulation, Facial Color Tones and Makeup VTO APIs · same flow runs in the shop's Telegram bot · not medical advice · MIT</div></footer>
 <script>
-const $=id=>document.getElementById(id);let scan=null,cart=new Set(),imgSrc=null,busy=false,calls=0,units=0,tryTok=0,trying=null,ordering=false,shadeData=null,simBusy=false,shadeBusy=false,simShownFor=null;
+const $=id=>document.getElementById(id);let scan=null,cart=new Set(),imgSrc=null,busy=false,calls=0,units=0,tryTok=0,trying=null,ordering=false,shadeData=null,simBusy=false,shadeBusy=false,simShownFor=null,autoLip=null,shown=null;
+const vtoCache=new Map(),simCache=new Map(); // per scan: re-showing a render costs no new YouCam task
 const COLORS={cleanser:['#d9ecf7','#9cc9e6'],serum:['#ffe7c7','#f3b874'],treatment:['#e6dcfb','#a58be6'],eye:['#dff3ea','#87cfae'],moisturizer:['#fde3ea','#ef9ab4'],spf:['#fff4c4','#efcf55'],makeup:['#f9d9df','#c94f6d']};
 const sevColor=v=>v<50?'var(--hi)':v<70?'var(--mid)':v<80?'#d987a4':'var(--ok)';
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -346,7 +349,7 @@ async function run(b64,type,reframe){setBusy(true);say('');const prevSrc=imgSrc;
   return}
  clearInterval(t);scan=res;imgSrc=b64;scan.content_type=type;calls+=scan.api_calls||0;units+=scan.units||0;shadeData=null;simShownFor=null;$('drop').classList.remove('scanning');setBusy(false);
  const c=$('chip');c.classList.add('show');c.innerHTML=`<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#7be3b5" stroke-width="3" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg>`+esc(scan.cached?'Loaded from cache · 0 units used':`Analyzed in ${(scan.elapsed_ms/1000).toFixed(1)} s · ${scan.mode==='live'?'live YouCam API':'mock mode'}`);
- tryTok++;trying=null;render();step(3);hood();setTimeout(()=>$('res').scrollIntoView({behavior:'smooth'}),400)}
+ tryTok++;trying=null;shown=null;autoLip=null;render();step(3);hood();setTimeout(()=>$('res').scrollIntoView({behavior:'smooth'}),400)}
 function render(){const live=scan.mode==='live';$('res').classList.add('show');$('ok').classList.remove('show');$('formErr').textContent='';
  $('srcPill').textContent=live?'Live · YouCam Skin Analysis':'Mock data';$('srcPill').classList.toggle('live',live);
  $('vtoPill').textContent=live?'Live · YouCam Makeup VTO':'Mock preview';$('vtoPill').classList.toggle('live',live);
@@ -372,7 +375,7 @@ function drawShades(){let list=scan.tryon.slice();
  if(shadeData){const rank=Object.fromEntries(shadeData.lips.map((l,i)=>[l.sku,i]));list.sort((a,b)=>(rank[a.sku]??99)-(rank[b.sku]??99));
   const m=shadeData.match;list=[{sku:m.sku,name:m.name,price:m.price,kind:'foundation',swatch:m.hex,match:true},...list.filter(p=>p.sku!==m.sku)]}
  scan.tryon=list;const best=new Set(shadeData?shadeData.lips.filter(l=>l.best).map(l=>l.sku):[]);
- $('shades').innerHTML=list.map(p=>`<button class="sw${trying===p.sku?' on':''}" type="button" aria-pressed="false" id="s-${esc(p.sku)}" onclick="tryOn('${esc(p.sku)}')"><i style="background:${esc(p.swatch)}" aria-hidden="true"></i><span>${esc(p.name)}${p.match?'<span class="tag">your match</span>':best.has(p.sku)?`<span class="tag">for ${esc(shadeData.undertone)}</span>`:''}<small>$${p.price.toFixed(2)} · ${esc(p.kind.replace('_',' '))}</small></span></button>`).join('')}
+ $('shades').innerHTML=list.map(p=>`<button class="sw${(trying||shown)===p.sku?' on':''}" type="button" aria-pressed="${(trying||shown)===p.sku}" id="s-${esc(p.sku)}" onclick="tryOn('${esc(p.sku)}')"><i style="background:${esc(p.swatch)}" aria-hidden="true"></i><span>${esc(p.name)}${p.match?'<span class="tag">your match</span>':best.has(p.sku)?`<span class="tag">for ${esc(shadeData.undertone)}</span>`:''}<small>$${p.price.toFixed(2)} · ${esc(p.kind.replace('_',' '))}</small></span></button>`).join('')}
 /* ---------- AM / PM plan (same rules as recommend.schedule on the server) ---------- */
 const WHEN={"SC-CLN-01": "both", "SC-SER-02": "both", "SC-SER-03": "both", "SC-SER-04": "am", "SC-NGT-05": "pm", "SC-EYE-06": "both", "SC-MST-07": "both", "SC-CIC-08": "both", "SC-SPF-09": "am"};
 const STEP_ORDER=['cleanser','serum','treatment','eye','moisturizer','spf'];
@@ -387,30 +390,39 @@ function planFor(skus){const items=skus.map(product).filter(p=>p&&WHEN[p.sku]).s
  return{am,pm,notes}}
 function drawPlan(){if(!scan)return;const pl=planFor([...cart]);const li=a=>a.length?a.map(n=>`<li>${esc(n)}</li>`).join(''):'<li class="none">—</li>';
  $('amList').innerHTML=li(pl.am);$('pmList').innerHTML=li(pl.pm);$('notes').innerHTML=pl.notes.map(n=>`<li>${esc(n)}</li>`).join('');
- const key=[...cart].sort().join(',');if(simShownFor!==null){$('simBtn').textContent=simShownFor===key?'Preview on my photo':'Basket changed — update preview'}}
+ const key=simKey();if(simShownFor!==null){$('simBtn').textContent=simShownFor===key?'Preview on my photo':'Basket changed — update preview'}}
+// Only skincare changes what the simulation shows; a lipstick or foundation in the basket doesn't.
+const simKey=()=>[...cart].filter(s=>WHEN[s]).sort().join(',');
 /* ---------- Skin Simulation of what the basket targets ---------- */
 const word=v=>v>=0.55?'strong':v>=0.35?'moderate':'light';
 function setSim(v){$('simSlider').value=v;$('simAfter').style.clipPath=`inset(0 0 0 ${v}%)`;$('simHandle').style.left=v+'%'}
 $('simSlider').oninput=e=>setSim(e.target.value);
-$('simBtn').onclick=async()=>{if(!scan||simBusy)return;const skus=[...cart];$('simErr').textContent='';
- if(!skus.some(s=>WHEN[s])){$('simErr').textContent='Add a skincare product to your basket to preview what it targets.';return}
+$('simBtn').onclick=async()=>{if(!scan||simBusy)return;const skus=[...cart].filter(s=>WHEN[s]);$('simErr').textContent='';
+ if(!skus.length){$('simErr').textContent='Add a skincare product to your basket to preview what it targets.';return}
+ const sid=scan.scan_id,key=simKey(),ck=sid+'|'+key;
  simBusy=true;const btn=$('simBtn');btn.disabled=true;btn.innerHTML='<span class="spin" style="border-color:#e8c3d0;border-top-color:#c2185b"></span> Rendering with YouCam Skin Simulation…';
- try{const r=await post('/simulate',{scan_id:scan.scan_id,skus,scores:scan.scores.map(s=>({type:s.type,ui_score:s.ui_score})),file_id:scan.file_id,image_base64:imgSrc,content_type:scan.content_type});
-  calls+=r.api_calls||0;units+=r.units||0;const a=$('simAfter');
+ try{let r=simCache.get(ck);const fresh=!r;
+  if(fresh){r=await post('/simulate',{scan_id:sid,skus,scores:scan.scores.map(s=>({type:s.type,ui_score:s.ui_score})),file_id:scan.file_id,image_base64:imgSrc,content_type:scan.content_type});
+   if(!scan||scan.scan_id!==sid)return; // a newer photo was analyzed meanwhile
+   calls+=r.api_calls||0;units+=r.units||0}
+  const a=$('simAfter');
   await new Promise((res,rej)=>{a.onload=res;a.onerror=()=>rej(new Error('The simulated image couldn’t be loaded. Please try again.'));a.src=r.image_url});
-  $('simBefore').src=imgSrc;$('simRes').hidden=false;setSim(50);
+  if(!scan||scan.scan_id!==sid)return;
+  simCache.set(ck,r);$('simBefore').src=imgSrc;$('simRes').hidden=false;setSim(50);
   $('simChips').innerHTML=r.concerns.map(c=>`<span title="${esc(c.products.join(', '))}">${esc(c.label)} · ${word(c.intensity)}</span>`).join('');
-  $('simUnits').textContent=r.mode==='mock'?'mock mode · no YouCam call':r.cached?'from cache · 0 units':`${(r.elapsed_ms/1000).toFixed(1)} s · ${r.units} YouCam units`;
-  simShownFor=skus.sort().join(',');hood()}
- catch(e){$('simErr').textContent='Preview failed: '+e.message}
- finally{simBusy=false;btn.disabled=false;drawPlan();if(simShownFor===null)btn.textContent='Preview on my photo'}};
+  $('simUnits').textContent=r.mode==='mock'?'mock mode · no YouCam call':(r.cached||!fresh)?'from cache · 0 units':`${(r.elapsed_ms/1000).toFixed(1)} s · ${r.units} YouCam units`;
+  simShownFor=key;hood()}
+ catch(e){if(scan&&scan.scan_id===sid)$('simErr').textContent='Preview failed: '+e.message}
+ finally{simBusy=false;btn.disabled=false;btn.textContent='Preview on my photo';drawPlan()}};
 /* ---------- Foundation shade match (Facial Color Tones Analyzer) ---------- */
 const closeness=d=>d<5?'very close match':d<10?'close match':'nearest shade in this range';
 $('shadeBtn').onclick=async()=>{if(!scan||shadeBusy)return;shadeBusy=true;$('shadeErr').textContent='';const btn=$('shadeBtn');btn.disabled=true;
  btn.innerHTML='<span class="spin"></span> Reading your skin tone…';
- try{const r=await post('/shade',{scan_id:scan.scan_id,scores:scan.scores.map(s=>({type:s.type,ui_score:s.ui_score})),file_id:scan.file_id,image_base64:imgSrc,content_type:scan.content_type});
+ const sid=scan.scan_id;
+ try{const r=await post('/shade',{scan_id:sid,scores:scan.scores.map(s=>({type:s.type,ui_score:s.ui_score})),file_id:scan.file_id,image_base64:imgSrc,content_type:scan.content_type});
+  if(!scan||scan.scan_id!==sid)return; // a newer photo was analyzed meanwhile
   calls+=r.api_calls||0;units+=r.units||0;shadeData=r;drawShade();drawShades();hood()}
- catch(e){$('shadeErr').textContent='Shade match failed: '+e.message}
+ catch(e){if(scan&&scan.scan_id===sid)$('shadeErr').textContent='Shade match failed: '+e.message}
  finally{shadeBusy=false;btn.disabled=false;btn.textContent='Find my shade'}};
 function drawShade(){const r=shadeData,m=r.match;$('shadeIntro').hidden=true;$('shadeRes').hidden=false;
  $('skinSw').style.background=r.skin_hex;$('skinHex').textContent=r.skin_hex;
@@ -425,25 +437,35 @@ function drawShade(){const r=shadeData,m=r.match;$('shadeIntro').hidden=true;$('
  if(warmer)$('alts').innerHTML+=`<span class="meta" style="margin:0;flex-basis:100%">${esc(m.shade)} is the closest color; your undertone reads ${esc(r.undertone)}, so ${esc(warmer.shade)} is the ${esc(r.undertone)} alternative.</span>`;
  const cap=t=>String(t).charAt(0).toUpperCase()+String(t).slice(1);
  const f=r.formula;$('formula').innerHTML=`<div><small>Finish</small><b>${esc(cap(f.finish))}</b><p>${esc(f.finish_why)}</p></div><div><small>Coverage</small><b>${esc(cap(f.coverage))}</b><p>${esc(f.coverage_why)}</p></div>`;
- $('shadeUnits').textContent=(r.mode==='mock'?'mock mode · no YouCam call':r.cached?'from cache · 0 units':`${(r.elapsed_ms/1000).toFixed(1)} s · ${r.units} YouCam units`)+` · measured from your photo; lighting can shift it, so the neighbors are one tap away`}
-function addShade(sku){if(!cart.has(sku)){[...cart].filter(x=>x.startsWith('SC-FND-')).forEach(x=>cart.delete(x));cart.add(sku);drawCart()}syncMatchBtn()}
+ $('shadeUnits').textContent=(r.mode==='mock'?'mock mode · no YouCam call':r.cached?'from cache · 0 units':`${(r.elapsed_ms/1000).toFixed(1)} s · ${r.units} YouCam units`)}
+function addShade(sku){if(cart.has(sku))cart.delete(sku);else{[...cart].filter(x=>x.startsWith('SC-FND-')).forEach(x=>cart.delete(x));cart.add(sku)}cartChanged()}
+// Any basket edit: refresh the routine cards, the match button and the basket; an old receipt no longer matches it.
+function cartChanged(){$('ok').classList.remove('show');scan.basket.forEach(p=>syncCard(p.sku));syncMatchBtn();drawCart()}
+function removeItem(sku){cart.delete(sku);if(autoLip===sku)autoLip=null;cartChanged()}
+function syncCard(sku){const el=$('p-'+sku);if(!el)return;const on=cart.has(sku),b=el.querySelector('.add');el.classList.toggle('in',on);b.textContent=on?'In basket':'Add';b.setAttribute('aria-pressed',on);b.setAttribute('aria-label',`${product(sku).name} ${on?'in basket':'— add to basket'}`)}
 function syncMatchBtn(){const b=$('matchAdd');if(b&&shadeData)b.textContent=cart.has(shadeData.match.sku)?'In basket ✓':'Add to basket'}
 const product=sku=>scan.basket.find(p=>p.sku===sku)||scan.tryon.find(p=>p.sku===sku)||(shadeData&&shadeData.range.map(x=>({sku:x.sku,name:x.name,price:x.price,kind:'foundation',swatch:x.hex})).find(p=>p.sku===sku));
-function toggle(sku){cart.has(sku)?cart.delete(sku):cart.add(sku);const el=$('p-'+sku);if(el){const on=cart.has(sku),b=el.querySelector('.add');el.classList.toggle('in',on);b.textContent=on?'In basket':'Add';b.setAttribute('aria-pressed',on);b.setAttribute('aria-label',`${product(sku).name} ${on?'in basket':'— add to basket'}`)}drawCart()}
-function drawCart(){const items=[...cart].map(product).filter(Boolean);$('lines').innerHTML=items.map(p=>`<div class="line"><span>${esc(p.name)}</span><b>$${p.price.toFixed(2)}</b></div>`).join('')||'<p class="sub">Basket is empty — add a product from your routine.</p>';
+function toggle(sku){cart.has(sku)?cart.delete(sku):cart.add(sku);cartChanged()}
+function drawCart(){const items=[...cart].map(product).filter(Boolean);$('lines').innerHTML=items.map(p=>`<div class="line"><span>${esc(p.name)}</span><span class="lr"><b>$${p.price.toFixed(2)}</b><button class="rm" type="button" aria-label="Remove ${esc(p.name)} from basket" title="Remove" onclick="removeItem('${esc(p.sku)}')">×</button></span></div>`).join('')||'<p class="sub">Basket is empty — add a product from your routine.</p>';
  $('total').textContent='$'+items.reduce((a,p)=>a+p.price,0).toFixed(2);$('orderBtn').disabled=ordering||!items.length;if(items.length)$('formErr').textContent='';drawPlan()}
 // Only the latest click renders (a slow earlier try-on can't overwrite the shade picked after it); same shade twice = one request.
-async function tryOn(sku,scroll){if(scroll)$('tryCard').scrollIntoView({behavior:'smooth',block:'start'});
+async function tryOn(sku,scroll){if(!scan)return;if(scroll)$('tryCard').scrollIntoView({behavior:'smooth',block:'start'});
  if(!scan.tryon.find(p=>p.sku===sku)){const p=product(sku);if(p){scan.tryon=[p,...scan.tryon];drawShades()}}
- if(trying===sku)return;const tok=++tryTok;trying=sku;
+ if(trying===sku)return;if(!trying&&shown===sku){addTried(sku);return}const tok=++tryTok,sid=scan.scan_id,ck=sid+'|'+sku;trying=sku;
  document.querySelectorAll('.sw').forEach(e=>{const on=e.id==='s-'+sku;e.classList.toggle('on',on);e.setAttribute('aria-pressed',on)});
  $('cmpEmpty').hidden=false;$('cmpEmpty').innerHTML='<span><span class="spin" style="border-color:#e8c3d0;border-top-color:#c2185b;display:inline-block;vertical-align:middle"></span>&nbsp; Rendering with YouCam Makeup VTO…</span>';
- try{const r=await post('/tryon',{scan_id:scan.scan_id,sku,file_id:scan.file_id,image_base64:imgSrc,content_type:scan.content_type});if(tok!==tryTok)return;calls+=r.api_calls||0;units+=r.units||0;
-  const a=$('after');await new Promise((res,rej)=>{a.onload=res;a.onerror=()=>rej(new Error('The try-on image couldn\u2019t be loaded. Please try again.'));a.src=r.image_url});if(tok!==tryTok)return;
-  a.hidden=$('handle').hidden=$('afterLbl').hidden=$('slider').hidden=false;$('cmpEmpty').hidden=true;setSlider(50);
-  if(!cart.has(sku)){if(sku.startsWith('SC-FND-'))[...cart].filter(x=>x.startsWith('SC-FND-')).forEach(x=>cart.delete(x));cart.add(sku);drawCart();syncMatchBtn()}step(4);hood()}
- catch(e){if(tok===tryTok){$('cmpEmpty').hidden=false;$('cmpEmpty').textContent='Try-on failed: '+(e.message||'image error')}}
+ try{let url=vtoCache.get(ck);
+  if(!url){const r=await post('/tryon',{scan_id:sid,sku,file_id:scan.file_id,image_base64:imgSrc,content_type:scan.content_type});if(tok!==tryTok)return;calls+=r.api_calls||0;units+=r.units||0;url=r.image_url}
+  const a=$('after');await new Promise((res,rej)=>{a.onload=res;a.onerror=()=>rej(new Error('The try-on image couldn\u2019t be loaded. Please try again.'));a.src=url});if(tok!==tryTok)return;
+  vtoCache.set(ck,url);shown=sku;a.hidden=$('handle').hidden=$('afterLbl').hidden=$('slider').hidden=false;$('cmpEmpty').hidden=true;setSlider(50);
+  addTried(sku);step(4);hood()}
+ catch(e){if(tok===tryTok){$('cmpEmpty').hidden=false;$('cmpEmpty').textContent='Try-on failed: '+(e.message||'image error');if(shown)document.querySelectorAll('.sw').forEach(el=>{const on=el.id==='s-'+shown;el.classList.toggle('on',on);el.setAttribute('aria-pressed',on)})}}
  finally{if(tok===tryTok)trying=null}}
+// What you try goes into the basket: one foundation, and the latest tried lip shade replaces the previous one.
+function addTried(sku){if(cart.has(sku))return;
+ if(sku.startsWith('SC-FND-'))[...cart].filter(x=>x.startsWith('SC-FND-')).forEach(x=>cart.delete(x));
+ else{if(autoLip)cart.delete(autoLip);autoLip=sku}
+ cart.add(sku);cartChanged()}
 function hood(){$('hoodTxt').textContent=`${calls} YouCam API requests · ${units} units this session · mode ${scan?scan.mode:'—'}`}
 function setSlider(v){$('slider').value=v;$('after').style.clipPath=`inset(0 0 0 ${v}%)`;$('handle').style.left=v+'%'}
 $('slider').oninput=e=>setSlider(e.target.value);

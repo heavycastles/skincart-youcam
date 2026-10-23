@@ -146,7 +146,7 @@ def simulation_plan(scores: list[dict], skus: list[str]) -> dict:
     Returns {"params": {sim_key: 0.2-0.7}, "concerns": [{type,label,ui_score,intensity,products}]}."""
     by = {s["type"]: int(s["ui_score"]) for s in scores if isinstance(s, dict) and "type" in s and "ui_score" in s}
     targeted: dict[str, list[str]] = {}
-    for sku in skus:
+    for sku in dict.fromkeys(skus):  # a repeated SKU is listed once
         p = get_product(sku)
         if not p or p.get("vto"):
             continue
