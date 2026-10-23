@@ -114,3 +114,20 @@ def test_order_response_never_echoes_another_customers_data():
     assert "Victim" not in text and "victim@example.com" not in text and "+998909998877" not in text
     assert [b["sku"] for b in body["lead"]["extra"]["basket"]] == ["SC-LIP-10"]  # only this order
     assert set(body["lead"]) == {"id", "score", "source", "extra"}
+
+
+def test_version_reports_n8n_only_when_configured(monkeypatch):
+    monkeypatch.delenv("N8N_WEBHOOK_URL", raising=False)
+    assert client.get("/version").json()["n8n"] is False
+    monkeypatch.setenv("N8N_WEBHOOK_URL", "https://n8n.example/webhook/x")
+    assert client.get("/version").json()["n8n"] is True
+
+
+def test_page_does_not_claim_unconfigured_integrations():
+    html = client.get("/").text
+    # the static markup must be honest by default; stronger wording is only swapped in from /version flags
+    meta = html.split('id="leadNote">')[1].split("</div>")[0]
+    assert "trigger an n8n alert" not in meta
+    footer = html.split("<footer>")[1].split("</footer>")[0]
+    assert "runs in the shop's Telegram bot" not in footer
+    assert "if(v.n8n)" in html and "if(v.telegram)" in html

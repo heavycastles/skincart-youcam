@@ -11,7 +11,13 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   const errors = [], failures = [], requests = [];
   p.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
   p.on('pageerror', e => errors.push(e.message));
-  p.on('request', r => { if (r.method() === 'POST') requests.push(new URL(r.url()).pathname); });
+  await p.setRequestInterception(true);
+  let delayNext = 0;  // ms to hold the next /tryon (simulates a slow YouCam render)
+  p.on('request', r => {
+    const path = new URL(r.url()).pathname;
+    if (r.method() === 'POST') requests.push(path);
+    if (path === '/tryon' && delayNext) { const d = delayNext; delayNext = 0; setTimeout(() => r.continue(), d); } else r.continue();
+  });
   const check = (name, cond) => { if (!cond) failures.push(name); };
   const ev = (fn, ...a) => p.evaluate(fn, ...a);
   const lines = () => ev(() => [...document.querySelectorAll('#lines .line')].map(e => e.querySelector('span').innerText));
@@ -48,6 +54,15 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   const tryons = requests.filter(x => x === '/tryon').length;
   await click('#' + lips[0]); await settle();
   check('re-trying a rendered shade reuses it', requests.filter(x => x === '/tryon').length === tryons);
+  // slow try-on, then a different shade: the later click wins; the slow render is kept, so tapping it later is free
+  delayNext = 1500;
+  await click('#' + lips[2]); await sleep(200);
+  await click('#' + lips[3]); await settle(); await sleep(2000);
+  check('slow earlier try-on does not overwrite the later pick', (await ev(() => shown)) === lips[3].slice(2));
+  const afterRace = requests.filter(x => x === '/tryon').length;
+  await click('#' + lips[2]); await settle();
+  check('superseded try-on render is reused, not re-requested', requests.filter(x => x === '/tryon').length === afterRace);
+  check('basket has the shade on screen', (await lines()).filter(n => /Lip|Tint|Balm/.test(n)).length === 1);
 
   // remove a skincare item from the basket: card + plan + sim stay in sync
   const first = await ev(() => document.querySelector('#lines .line span').innerText);
@@ -73,6 +88,9 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   await click('#lines .rm'); await sleep(100);
   check('receipt hidden after the basket changes', !(await ev(() => document.getElementById('ok').classList.contains('show'))));
   check('no horizontal scroll at the end', await noScroll());
+  // mock server has no n8n / Telegram bot: the page must not claim them
+  check('no n8n alert claim without n8n', !(await ev(() => document.getElementById('leadNote').innerText)).includes('trigger an n8n alert'));
+  check('no live-bot claim without a bot', !(await ev(() => document.querySelector('footer').innerText)).includes("runs in the shop's Telegram bot"));
   check('no JS errors', errors.length === 0);
   console.log(JSON.stringify({ok: !failures.length, failures, errors}));
   await b.close();

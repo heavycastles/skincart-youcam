@@ -244,7 +244,7 @@ footer{border-top:1px solid var(--line);padding:22px 0 30px;color:var(--muted);f
   <div class="formerr" id="formErr" role="alert"></div>
   <button class="btn pri" id="orderBtn" type="button" style="width:100%;justify-content:center">Place order</button>
   <div class="ok" id="ok" role="status" aria-live="polite"></div>
-  <div class="meta">Orders land in the shop's lead inbox (normalized, de-duplicated, scored) and trigger an n8n alert plus a day-14 re-scan reminder.</div>
+  <div class="meta" id="leadNote">Orders are saved on the server as scored leads (phone normalized, repeat orders de-duplicated). The repo includes an n8n workflow for an owner alert and a day-14 re-scan reminder.</div>
  </div>
  <div class="card"><div style="font-weight:600">Under the hood</div><p class="sub" style="margin:4px 0 0" id="hoodTxt">YouCam API calls in this session</p>
   <div class="api"><span>POST /s2s/v2.0/file</span><span>task/skin-analysis</span><span>task/skin-simulation</span><span>task/skin-tone-analysis</span><span>task/makeup-vto</span></div></div>
@@ -260,7 +260,7 @@ footer{border-top:1px solid var(--line);padding:22px 0 30px;color:var(--muted);f
   </div>
  </section>
 </main>
-<footer><div class="wrap">SkinCart · built on the YouCam Skin Analysis, Skin Simulation, Facial Color Tones and Makeup VTO APIs · same flow runs in the shop's Telegram bot · not medical advice · MIT</div></footer>
+<footer><div class="wrap">SkinCart · built on the YouCam Skin Analysis, Skin Simulation, Facial Color Tones and Makeup VTO APIs · <span id="tgNote">Telegram bot version included in the repo</span> · not medical advice · MIT</div></footer>
 <script>
 const $=id=>document.getElementById(id);let scan=null,cart=new Set(),imgSrc=null,busy=false,calls=0,units=0,tryTok=0,trying=null,ordering=false,shadeData=null,simBusy=false,shadeBusy=false,simShownFor=null,autoLip=null,shown=null;
 const vtoCache=new Map(),simCache=new Map(); // per scan: re-showing a render costs no new YouCam task
@@ -268,7 +268,10 @@ const COLORS={cleanser:['#d9ecf7','#9cc9e6'],serum:['#ffe7c7','#f3b874'],treatme
 const sevColor=v=>v<50?'var(--hi)':v<70?'var(--mid)':v<80?'#d987a4':'var(--ok)';
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const MIN_SIDE=480,MAX_FILE=25e6;
-fetch('/version').then(r=>r.json()).then(v=>{const live=v.youcam.mode==='live';$('mode').classList.toggle('live',live);$('modeTxt').textContent='YouCam API · '+(live?'LIVE':'mock')}).catch(()=>{});
+fetch('/version').then(r=>r.json()).then(v=>{const live=v.youcam.mode==='live';$('mode').classList.toggle('live',live);$('modeTxt').textContent='YouCam API · '+(live?'LIVE':'mock');
+ // Only claim the alert / bot when they are actually connected on this deployment.
+ if(v.n8n)$('leadNote').textContent="Orders land in the shop's lead inbox (normalized, de-duplicated, scored) and trigger an n8n alert plus a day-14 re-scan reminder.";
+ if(v.telegram)$('tgNote').textContent="same flow runs in the shop's Telegram bot"}).catch(()=>{});
 // Every server answer becomes one readable sentence: JSON detail, or a fallback for host-level errors (plain text / HTML).
 const FALLBACK={413:'This photo is too large to upload. Please use a smaller one.',429:'Too many requests. Please wait a few seconds and try again.',500:'Something went wrong on our side. Please try again.',502:'YouCam couldn\u2019t process this request right now. Please try again.',503:'The service is busy. Please try again in a moment.',504:'YouCam is taking longer than usual. Please try again in a moment.'};
 async function post(url,body,ms=70000){const ctl=new AbortController(),t=setTimeout(()=>ctl.abort(),ms);let r;
@@ -455,7 +458,8 @@ async function tryOn(sku,scroll){if(!scan)return;if(scroll)$('tryCard').scrollIn
  document.querySelectorAll('.sw').forEach(e=>{const on=e.id==='s-'+sku;e.classList.toggle('on',on);e.setAttribute('aria-pressed',on)});
  $('cmpEmpty').hidden=false;$('cmpEmpty').innerHTML='<span><span class="spin" style="border-color:#e8c3d0;border-top-color:#c2185b;display:inline-block;vertical-align:middle"></span>&nbsp; Rendering with YouCam Makeup VTO…</span>';
  try{let url=vtoCache.get(ck);
-  if(!url){const r=await post('/tryon',{scan_id:sid,sku,file_id:scan.file_id,image_base64:imgSrc,content_type:scan.content_type});if(tok!==tryTok)return;calls+=r.api_calls||0;units+=r.units||0;url=r.image_url}
+  if(!url){const r=await post('/tryon',{scan_id:sid,sku,file_id:scan.file_id,image_base64:imgSrc,content_type:scan.content_type});calls+=r.api_calls||0;units+=r.units||0;url=r.image_url;
+   if(tok!==tryTok){if(url&&scan&&scan.scan_id===sid)vtoCache.set(ck,url);hood();return}} // superseded: not shown, but kept so tapping it later is free
   const a=$('after');await new Promise((res,rej)=>{a.onload=res;a.onerror=()=>rej(new Error('The try-on image couldn\u2019t be loaded. Please try again.'));a.src=url});if(tok!==tryTok)return;
   vtoCache.set(ck,url);shown=sku;a.hidden=$('handle').hidden=$('afterLbl').hidden=$('slider').hidden=false;$('cmpEmpty').hidden=true;setSlider(50);
   addTried(sku);step(4);hood()}

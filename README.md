@@ -4,6 +4,10 @@
 
 **Live demo:** https://skincart-youcam.vercel.app (no login; press "Use sample photo", or upload your own selfie)
 
+The public demo runs the web flow on the live YouCam API (analysis, simulation, shade match, try-on, order saved as a
+scored lead). The Telegram bot and the n8n workflow are in the repo and run with `docker compose`; the page only claims
+them when they are connected (`/version` reports `telegram` and `n8n`).
+
 **YouCam APIs used:** AI Skin Analysis · AI Skin Simulation · AI Facial Color Tones Analyzer · AI Makeup VTO — all on one
 File API upload (`file_id`). Demo video: [`docs/demo-v4.mp4`](docs/demo-v4.mp4).
 
@@ -77,7 +81,7 @@ portrait behind the "Use sample photo" button.
 ```bash
 cp .env.example .env               # optional: YOUCAM_API_KEY, TELEGRAM_BOT_TOKEN
 python -m venv .venv && .venv/bin/pip install -r requirements-dev.txt
-.venv/bin/pytest -q                # 64 tests (offline mock)
+.venv/bin/pytest -q                # 66 tests (offline mock)
 .venv/bin/python serve.py          # http://localhost:8080  (mock mode if no key)
 docker compose up --build          # app :8080 + n8n :5678 (import n8n/skincart-orders.json)
 ```

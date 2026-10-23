@@ -426,7 +426,8 @@ def healthz() -> dict:
 def version() -> dict:
     return {"version": VERSION, "commit": os.getenv("GIT_COMMIT", "unknown"),
             "youcam": {"mode": "mock" if youcam.mock else "live", "base_url": youcam.base_url,
-                       "api_calls": youcam.calls}, "telegram": bot.enabled}
+                       "api_calls": youcam.calls}, "telegram": bot.enabled,
+            "n8n": bool(os.getenv("N8N_WEBHOOK_URL"))}
 
 
 @app.get("/")
