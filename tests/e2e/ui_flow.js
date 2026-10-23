@@ -16,6 +16,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   const ev = (fn, ...a) => p.evaluate(fn, ...a);
   const lines = () => ev(() => [...document.querySelectorAll('#lines .line')].map(e => e.querySelector('span').innerText));
   const click = sel => ev(s => document.querySelector(s).click(), sel);
+  const settle = async () => { await sleep(150); await p.waitForFunction('trying===null', {timeout: 90000}); await sleep(150); };
   const noScroll = () => ev(() => document.documentElement.scrollWidth <= innerWidth);
 
   await p.goto(BASE, {waitUntil: 'networkidle0'});
@@ -37,15 +38,15 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   await p.waitForSelector('#simRes:not([hidden])', {timeout: 30000});
   await sleep(200);
   const lips = await ev(() => [...document.querySelectorAll('#shades .sw')].map(e => e.id).filter(i => i.includes('LIP')));
-  await click('#' + lips[0]); await sleep(600);
+  await click('#' + lips[0]); await settle();
   check('sim not stale after a lip try-on', (await ev(() => document.getElementById('simBtn').innerText)) === 'Preview on my photo');
   // trying a second lip swaps the first one
-  await click('#' + lips[1]); await sleep(600);
+  await click('#' + lips[1]); await settle();
   const afterLips = await lines();
   check('only the latest tried lip shade is in the basket', afterLips.filter(n => /Lip|Tint|Balm/.test(n)).length === 1);
   // re-showing an already rendered shade costs no request
   const tryons = requests.filter(x => x === '/tryon').length;
-  await click('#' + lips[0]); await sleep(600);
+  await click('#' + lips[0]); await settle();
   check('re-trying a rendered shade reuses it', requests.filter(x => x === '/tryon').length === tryons);
 
   // remove a skincare item from the basket: card + plan + sim stay in sync
