@@ -4,6 +4,9 @@
 
 **Live demo:** https://skincart-youcam.vercel.app (no login; press "Use sample photo", or upload your own selfie)
 
+**YouCam APIs used:** AI Skin Analysis · AI Skin Simulation · AI Facial Color Tones Analyzer · AI Makeup VTO — all on one
+File API upload (`file_id`). Demo video: [`docs/demo-v4.mp4`](docs/demo-v4.mp4).
+
 Own photos go through a quick **framing step** (zoom/drag so the face fills the oval), because YouCam Skin Analysis
 needs the face to cover more than 60% of the photo width. Photos are checked before any API call (JPG/PNG, at least
 480 px on the short side), and YouCam errors such as "face too small", "no face" or "too dark" come back as plain advice.
@@ -74,7 +77,7 @@ portrait behind the "Use sample photo" button.
 ```bash
 cp .env.example .env               # optional: YOUCAM_API_KEY, TELEGRAM_BOT_TOKEN
 python -m venv .venv && .venv/bin/pip install -r requirements-dev.txt
-.venv/bin/pytest -q                # 58 tests (offline mock)
+.venv/bin/pytest -q                # 64 tests (offline mock)
 .venv/bin/python serve.py          # http://localhost:8080  (mock mode if no key)
 docker compose up --build          # app :8080 + n8n :5678 (import n8n/skincart-orders.json)
 ```
@@ -85,6 +88,23 @@ Smoke-test one real call: `YOUCAM_API_KEY=... PYTHONPATH=. python scripts/live_s
 
 Telegram: set `TELEGRAM_BOT_TOKEN` and either register a webhook to `https://<host>/telegram/webhook`
 (optionally with `TELEGRAM_WEBHOOK_SECRET`) or run long polling: `python -m app.telegram`.
+
+## Environment variables
+
+All optional — with none set, the app runs fully offline in mock mode. Copy `.env.example` to `.env` (gitignored).
+
+| Variable | Example | Purpose |
+|---|---|---|
+| `YOUCAM_API_KEY` | `your-youcam-api-key` | YouCam API key ([API console](https://yce.makeupar.com/api-console/en/api-keys/)); empty = mock mode |
+| `YOUCAM_MOCK` | `1` | Force mock mode even when a key is set (saves units) |
+| `YOUCAM_BASE_URL` | `https://yce-api-01.makeupar.com` | YouCam API server |
+| `YOUCAM_TIMEOUT` | `45` | Seconds to poll a task before giving up (default 45 on Vercel, 120 elsewhere) |
+| `TELEGRAM_BOT_TOKEN` | `123456:your-bot-token` | Telegram bot (webhook or `python -m app.telegram` long polling) |
+| `TELEGRAM_WEBHOOK_SECRET` | `change-me` | Checked against Telegram's secret-token header on `/telegram/webhook` |
+| `OWNER_CHAT_ID` | `123456789` | Shop owner's Telegram chat, notified by the n8n workflow about new orders |
+| `N8N_WEBHOOK_URL` | `http://n8n:5678/webhook/skincart-order` | Order hand-off to the n8n workflow |
+| `ADMIN_TOKEN` | `long-random-string` | Enables admin-only `/leads` (header `X-Admin-Token`); unset = 404 |
+| `PORT` | `8080` | Local server port (`serve.py`) |
 
 Never commit `.env` or the API key.
 
@@ -123,24 +143,14 @@ A full first visit with the sample photo is 39 units; repeat visits on a warm in
 `app/shade.py` shade match · `app/leads.py` LeadFlow store
 (extended with `extra`) · `app/telegram.py` bot · `app/static/index.html` web UI · `n8n/` workflow · `tests/`.
 
-## Submission pack (local)
+## Demo video & docs
 
-- Devpost write-up: [`SUBMISSION.md`](SUBMISSION.md)
-- Demo script: [`docs/video-script-v3.md`](docs/video-script-v3.md)
+- **Demo video** (2:30, 1080p, recorded on the live production demo in one take): [`docs/demo-v4.mp4`](docs/demo-v4.mp4)
+  · subtitles [`docs/demo-v4.srt`](docs/demo-v4.srt) · cover [`docs/demo-v4-cover.png`](docs/demo-v4-cover.png)
+  · script [`docs/video-script-v4.md`](docs/video-script-v4.md)
 - Slides PDF: [`docs/slides.pdf`](docs/slides.pdf) · cover: [`docs/cover.png`](docs/cover.png)
-- **Demo video v4** (recorded on the live production demo on 23 Oct ~08:31 MSK on the current UI: everything in v3 plus the basket “×” remove button, a lip try-on that replaces the previous one, and a cached re-tap): [`docs/demo-v4.mp4`](docs/demo-v4.mp4) (2:30, 1080p; subtitles [`docs/demo-v4.srt`](docs/demo-v4.srt), cover [`docs/demo-v4-cover.png`](docs/demo-v4-cover.png), script [`docs/video-script-v4.md`](docs/video-script-v4.md))
-- Previous cut — **Demo video v3** (recorded on the live production demo on 22 Oct ~17:05 MSK: Skin Analysis, Skin Simulation, foundation shade match with Facial Color Tones, foundation + lip try-on, AM/PM plan, order): [`docs/demo-v3.mp4`](docs/demo-v3.mp4) (2:10, 1080p; subtitles [`docs/demo-v3.srt`](docs/demo-v3.srt), cover [`docs/demo-v3-cover.png`](docs/demo-v3-cover.png), script [`docs/video-script-v3.md`](docs/video-script-v3.md))
-- Demo video v2 (22 Oct ~00:50 MSK, before Skin Simulation / shade match were added): [`docs/demo-v2.mp4`](docs/demo-v2.mp4) (2:03, 1080p; subtitles [`docs/demo-v2.srt`](docs/demo-v2.srt), cover [`docs/demo-v2-cover.png`](docs/demo-v2-cover.png), script [`docs/video-script-v2.md`](docs/video-script-v2.md)). Earlier drafts: `docs/demo-live-draft.mp4`, `docs/demo-draft.mp4` (mock)
 - Screenshots of the live run: [`docs/screenshots/`](docs/screenshots/)
-- Live YouCam proof: [`docs/live-proof.md`](docs/live-proof.md) (2026-10-19, licensed Unsplash stock face)
-
-
-## Preflight / publish (local)
-
-```bash
-./scripts/preflight_submit.sh
-# VISIBILITY=private ./scripts/publish_github.sh
-```
+- Live YouCam proof: [`docs/live-proof.md`](docs/live-proof.md) (licensed Unsplash stock face)
 
 ## Deploy demo (Vercel)
 

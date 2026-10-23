@@ -1,5 +1,7 @@
 # YouCam live API proof — SkinCart
 
+> Note: earlier draft cuts mentioned below (`demo-draft.mp4`, `demo-live-draft.mp4`, `demo-v2.mp4`, `demo-v3.mp4`) are superseded by [`demo-v4.mp4`](demo-v4.mp4) and are not included in this repository.
+
 **Status:** SUCCESS (first live call)  
 **When:** 2026-10-19 ~16:43:25 MSK (Europe/Moscow)  
 **Elapsed:** ~12 seconds end-to-end (File upload + skin-analysis poll + makeup-vto poll)  
