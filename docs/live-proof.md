@@ -159,3 +159,24 @@ Chrome at 1280 px:
 "Under the hood" at the end of the session: 26 YouCam API requests · 40 units · mode live.
 YouCam balance (`GET /s2s/v1.0/client/credit`): **808 before → 768 after (40 units)**. A dry run of the recording script
 beforehand used a local mock server only (0 units).
+
+## Demo video v4 recording (Vercel) — 2026-10-23 ~08:31 MSK
+
+Recorded `docs/demo-v4.mp4` on https://skincart-youcam.vercel.app in one take with the sample photo (licensed stock face),
+Chrome at 1280 px, on the UI with basket remove buttons, lip swap and cached previews:
+
+| Step | Time (client) | Units | Result |
+|---|---|---|---|
+| `/analyze` (File API upload + Skin Analysis) | 5.8 s | 14 | skin score 84: visible pores · dryness · puffy eyes |
+| `/simulate` (Skin Simulation, default basket) | 5.1 s | 4 | pores, dryness, fine lines, firmness |
+| `/shade` (Facial Color Tones) | 7.5 s | 20 | skin `#bf9c83` (warm, light) → **180 Natural**, ΔE 6.1; neighbors 160 Rose Beige / 220 Sand; dewy finish |
+| `/tryon` `SC-FND-180` (foundation) | ~9.9 s | 1 | rendered, added to basket ($109) |
+| `/tryon` `SC-LIP-15` Petal Nude | ~9.0 s | 1 | rendered, added ($120) |
+| `/tryon` `SC-LIP-11` Coral | ~9.2 s | 1 | rendered, replaces Petal Nude ($121) |
+| re-tap Petal Nude | 0.4 s | 0 | cached, no request ($120) |
+| remove “Retinal 0.05% Night Cream” (×) | — | 0 | total $92.00 |
+| `/orders` (Demo Shopper · +1 000 000 0000 · demo@example.com) | <1 s | 0 | receipt: lead #1 · score 65 · 6 items · $92.00 |
+
+"Under the hood" at the end of the session: 30 YouCam API requests · 41 units · mode live.
+YouCam balance (`GET /s2s/v1.0/client/credit`): **687 before → 646 after (41 units)**. A dry run of the recording script
+beforehand used a local mock server only (0 units).
