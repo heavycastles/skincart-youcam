@@ -131,3 +131,34 @@ def test_page_does_not_claim_unconfigured_integrations():
     footer = html.split("<footer>")[1].split("</footer>")[0]
     assert "runs in the shop's Telegram bot" not in footer
     assert "if(v.n8n)" in html and "if(v.telegram)" in html
+
+
+def test_security_headers_on_every_response():
+    for path in ("/", "/healthz", "/nope"):
+        r = client.get(path)
+        assert r.headers["x-content-type-options"] == "nosniff"
+        assert r.headers["x-frame-options"] == "DENY"
+        assert r.headers["referrer-policy"] == "strict-origin-when-cross-origin"
+
+
+def test_bad_photo_link_is_rejected_before_youcam():
+    for url in ("not a url", "ftp://example.com/a.jpg", "javascript:alert(1)", "https://" + "a" * 2100 + ".com"):
+        r = client.post("/analyze", json={"image_url": url})
+        assert r.status_code == 422, url
+        assert "photo link" in r.json()["detail"]
+    r = client.post("/tryon", json={"scan_id": "abc", "sku": "x", "image_url": "nope"})
+    assert r.status_code == 422
+
+
+def test_telegram_webhook_rejects_non_object_json():
+    assert client.post("/telegram/webhook", content=b"not json",
+                       headers={"content-type": "application/json"}).status_code == 400
+    assert client.post("/telegram/webhook", json=[1, 2]).status_code == 400
+
+
+def test_lead_detail_hidden_even_with_bad_id(monkeypatch):
+    monkeypatch.delenv("ADMIN_TOKEN", raising=False)
+    assert client.get("/leads/abc").status_code == 404
+    monkeypatch.setenv("ADMIN_TOKEN", "s3cret-token")
+    assert client.get("/leads/abc").status_code == 401
+    assert client.get("/leads/abc", headers={"X-Admin-Token": "s3cret-token"}).status_code == 404

@@ -34,6 +34,17 @@ MIN_SIDE = 480  # YouCam SD skin analysis: short side must be at least 480 px
 MAX_SCANS = 24  # in-memory cache holds photos, so keep it bounded on long-lived instances
 
 app = FastAPI(title="SkinCart", version=VERSION)
+
+SECURITY_HEADERS = {"X-Content-Type-Options": "nosniff", "X-Frame-Options": "DENY",
+                    "Referrer-Policy": "strict-origin-when-cross-origin"}
+
+
+@app.middleware("http")
+async def security_headers(request: Request, call_next):
+    response = await call_next(request)
+    for key, value in SECURITY_HEADERS.items():
+        response.headers.setdefault(key, value)
+    return response
 youcam = YouCamClient()
 store = LeadStore()
 
@@ -209,6 +220,15 @@ def _decode_b64(data: str) -> bytes:
         raise HTTPException(422, "This photo couldn't be read (the upload is not valid base64).") from exc
 
 
+URL_RE = re.compile(r"https?://[^\s/?#]+\.[^\s/?#]+[^\s]*", re.IGNORECASE)
+
+
+def _check_url(url: str | None) -> None:
+    """A photo link must be a public http(s) URL; anything else would only time out at YouCam."""
+    if url is not None and (len(url) > 2048 or not URL_RE.fullmatch(url.strip())):
+        raise HTTPException(422, "That photo link doesn't look right. Use a full https:// link to a JPG or PNG.")
+
+
 def _scan_id(image: bytes | None, url: str | None) -> str:
     return hashlib.sha256(image or (url or "").encode()).hexdigest()[:16]
 
@@ -253,6 +273,7 @@ def resolve_scan(scan_id: str, fallback: ScanRef | None = None) -> dict:
         if image is not None and len(image) > MAX_IMAGE:
             raise HTTPException(413, "This photo is too large. Please use one under 10 MB.")
         url = None if image else fallback.image_url
+        _check_url(url)
         if (image or url) and _scan_id(image, url) != scan_id:
             raise HTTPException(400, "This photo doesn't match the analyzed one. Please analyze it again.")
         scan = scans.setdefault(scan_id, {"image": image, "url": url, "content_type": fallback.content_type,
@@ -460,6 +481,8 @@ def analyze(body: AnalyzeIn) -> dict:
     if not body.image_base64 and not body.image_url:
         raise HTTPException(422, "Please choose a photo first.")
     image = _decode_b64(body.image_base64) if body.image_base64 else None
+    if image is None:
+        _check_url(body.image_url)
     content_type = check_image(image) if image is not None else body.content_type
     return analyze_image(image, body.image_url if not image else None, content_type)
 
@@ -493,9 +516,9 @@ def leads(request: Request, min_score: int = 0) -> dict:
 
 
 @app.get("/leads/{lead_id}")
-def lead(lead_id: int, request: Request) -> dict:
-    require_admin(request)
-    found = store.get(lead_id)
+def lead(lead_id: str, request: Request) -> dict:
+    require_admin(request)  # before parsing, so a bad id can't reveal that the route exists
+    found = store.get(int(lead_id)) if lead_id.isdigit() else None
     if not found:
         raise HTTPException(404, "lead not found")
     return found.__dict__
@@ -506,4 +529,10 @@ async def telegram_webhook(request: Request) -> dict:
     secret = os.getenv("TELEGRAM_WEBHOOK_SECRET")
     if secret and request.headers.get("X-Telegram-Bot-Api-Secret-Token") != secret:
         raise HTTPException(403, "bad secret")
-    return bot.handle(await request.json())
+    try:
+        update = await request.json()
+    except ValueError:
+        raise HTTPException(400, "update must be JSON") from None
+    if not isinstance(update, dict):
+        raise HTTPException(400, "update must be a JSON object")
+    return bot.handle(update)
