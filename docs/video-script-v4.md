@@ -7,7 +7,7 @@ Face: licensed stock portrait (Jake Nackos / Unsplash License, `docs/stock-face/
 Music: synthesized for this video (no third-party tracks).
 
 Live run (one session, 30 YouCam HTTP requests, **41 units**; balance 687 → 646): 1 File API upload + Skin Analysis (5.8 s, score 84) · Skin Simulation (5.1 s, 4 units) · Facial Color Tones (7.5 s, 20 units → 180 Natural, ΔE 6.1) · Makeup VTO foundation 180 Natural (1) · Makeup VTO lip Petal Nude (1) · Makeup VTO lip Coral (1) · re-tap Petal Nude (cached, 0).
-Speed-ups (all labelled on screen): Skin Simulation and Facial Color Tones waits 2×, the three VTO render waits 3×, short non-wait tails of the try-on scenes 1.3–1.6×; everything else is real time. No repository URL is shown (the repo is not public).
+Speed-ups (all labelled on screen): Skin Simulation and Facial Color Tones waits 2×, the three VTO render waits 3×, short non-wait tails of the try-on scenes 1.3–1.6×; everything else is real time. No repository URL is shown (the repo was still private when this was recorded; it is public now: https://github.com/heavycastles/skincart-youcam).
 Previous cut: `docs/demo-v3.mp4` (2:10, 22 Oct) — predates the basket remove button and lip swap.
 
 | Time | Scene | Narration |

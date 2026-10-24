@@ -4,22 +4,25 @@ theme: default
 paginate: true
 size: 16:9
 style: |
-  section { font-family: Inter, Helvetica, Arial, sans-serif; }
+  section { font-family: Inter, Helvetica, Arial, sans-serif; font-size: 26px; }
   h1 { color: #c2185b; }
   h2 { color: #1a1a1a; }
   footer { color: #666; font-size: 14px; }
-  table { font-size: 18px; }
+  table { font-size: 20px; }
   code { background: #f4f4f4; }
   strong { color: #c2185b; }
-footer: SkinCart · YouCam API Skin AI & eCommerce VTO Hackathon · MIT
+  img[alt~="shot"] { border: 1px solid #ddd; border-radius: 8px; }
+footer: SkinCart · YouCam API Skin AI & eCommerce VTO Hackathon · MIT · skincart-youcam.vercel.app
 ---
 
 <!-- _class: lead -->
 # SkinCart 💄
-## Selfie → skin analysis → routine → try-on → order
+## Selfie in. Basket out.
 
-**heavycastles** · YouCam API Skin AI & eCommerce VTO Hackathon  
-A Telegram beauty-shop assistant on YouCam AI · mock-mode demos welcome
+Skin analysis → routine you can preview on your face → foundation shade matched and tried on → one-tap order
+
+**Live demo:** https://skincart-youcam.vercel.app (no login, "Use sample photo")
+**Code:** https://github.com/heavycastles/skincart-youcam (MIT) · **Video:** https://youtu.be/NIFuCn8lOT0
 
 ---
 
@@ -27,83 +30,90 @@ A Telegram beauty-shop assistant on YouCam AI · mock-mode demos welcome
 
 Small cosmetics shops in **Central Asia / CIS** sell through Telegram & Instagram DMs.
 
-- "What should I buy for my skin?" answered **by hand** every day
-- Customers **can't try** lipstick or foundation in a chat
-- Guesswork → lost sales and wrong products
+- "What should I buy for my skin?" is answered **by hand**, all day
+- Customers **can't test** a foundation or a lipstick in a chat
+- The wrong foundation shade is one of the top reasons it gets **sent back**
 
-> Give a one-person shop the same scan → recommend → try on → buy flow as a big beauty brand.
+> Give a one-person shop the scan → recommend → try on → buy flow of a big beauty brand.
 
 ---
 
-# What SkinCart does
+# What SkinCart does — one upload, four YouCam AI APIs
 
-1. Customer sends a **selfie** (Telegram bot or web)
-2. **YouCam AI Skin Analysis** scores **12** concerns
-3. Matcher builds a **routine** from the shop's catalog (always SPF)
-4. **YouCam Makeup VTO** previews lipstick / foundation on their face
-5. **Order** → LeadFlow lead (`skin_profile` + `basket`) → **n8n** owner alert + 14-day re-scan
+1. **Skin Analysis** scores 12 concerns → top 3 focus areas + YouCam overlay masks
+2. Routine from the shop's **own catalog** (always SPF) + **morning / evening plan** with clash rules
+3. **Skin Simulation**: the customer's photo with only what the basket targets softened (0.25–0.7 by score)
+4. **Facial Color Tones**: undertone + depth → nearest of 12 foundation shades (ΔE), neighbours, finish
+5. **Makeup VTO**: the matched foundation and lip shades ranked for the undertone, before/after slider
+6. **Order** → scored, de-duplicated lead with skin profile + basket (optional n8n owner alert + day-14 re-scan)
 
-```
-selfie → File API → Skin Analysis → recommend → Makeup VTO → order → n8n
-```
+---
+
+# Live: analysis, routine, preview
+
+![shot h:330](docs/screenshots/03-skin-analysis.png) ![shot h:330](docs/screenshots/10-skin-simulation.png)
+
+Score 84 · visible pores, dryness, puffy eyes · Skin Simulation of the basket (4 units)
+
+---
+
+# Live: shade match and try-on
+
+![shot h:400](docs/screenshots/11-shade-match.png) ![shot h:400](docs/screenshots/12-foundation-tryon.png)
+
+Skin #bf9c83 · warm · light → **180 Natural** (ΔE 6.1) · dewy finish because dryness scored 73
 
 ---
 
 # YouCam APIs used
 
-| Step | Endpoint |
-|---|---|
-| Upload | `POST /s2s/v2.0/file` → presigned PUT |
-| Skin | `POST /s2s/v2.0/task/skin-analysis` → poll |
-| VTO | `POST /s2s/v2.0/task/makeup-vto` → poll |
+| Step | Endpoint | Units |
+|---|---|---|
+| Upload once | `POST /s2s/v2.0/file` → presigned PUT → `file_id` | 0 |
+| Skin Analysis | `POST /s2s/v2.0/task/skin-analysis` (12 SD actions) → poll | 14 |
+| Skin Simulation | `POST /s2s/v2.0/task/skin-simulation` (basket concerns) → poll | 4–6 |
+| Facial Color Tones | `POST /s2s/v2.0/task/skin-tone-analysis` → poll | 20 |
+| Makeup VTO | `POST /s2s/v2.0/task/makeup-vto` (lip / foundation) → poll | 1 |
 
-Auth: `Authorization: Bearer $YOUCAM_API_KEY` · server `yce-api-01.makeupar.com`
-
-**Cache per image hash** → re-scans & repeat try-ons cost **0 units**.  
-**Mock mode** (no key / `YOUCAM_MOCK=1`) → deterministic offline demos & CI.
-
----
-
-# Demo (mock mode)
-
-Synthetic illustrative face · **no real selfie** · badge `YouCam: mock`
-
-- Top concerns e.g. puffy eyes / breakouts / dryness
-- Routine: cleanser + eye gel + treatment + **SPF 50**
-- Try-on: Velvet Matte Lipstick – Rose (mock SVG preview)
-- Order → LeadFlow lead with `skin_profile` + `basket`
-
-Screenshots + draft video: `docs/`
+Same `file_id` for every task · results cached per photo (repeat = **0 units**) · the page shows units per step
 
 ---
 
 # Architecture
 
 ```
-Telegram bot ──┐
-               ├──► FastAPI (SkinCart)
-Web demo ──────┘         │
-                         ├─ YouCam client (File / Skin / VTO)
-                         ├─ recommend.py + catalog.json
-                         ├─ LeadStore (normalize / de-dupe / score)
-                         └─ n8n webhook (owner alert + day-14 re-scan)
+Web page ──────┐
+               ├──► FastAPI  /analyze · /simulate · /shade · /tryon · /orders
+Telegram bot ──┘         │
+                         ├─ YouCam client (File API → 4 async tasks, polling, cache)
+                         ├─ recommend.py + catalog.json (routine, AM/PM plan, simulation plan)
+                         ├─ shade.py (CIELAB / ITA, delta-E, undertone-aware, lip ranking)
+                         ├─ LeadStore (normalize / de-dupe / score + skin profile)
+                         └─ n8n webhook (owner alert + day-14 re-scan), optional
 ```
 
-Docker Compose: app `:8080` + n8n `:5678` · MIT · pytest green
+Vercel (serverless FastAPI) · Docker Compose · 77 pytest cases incl. headless-browser runs at 1280 and 375 px
+
+---
+
+# Built for real shoppers
+
+- Photo checks **before** any API call (format, size, framing step); YouCam errors become plain advice
+- Honest UI: "simulation, not a promise", units shown, mock mode clearly labelled
+- Accessible: AA contrast, live announcements, keyboard sliders · Lighthouse 100 on mobile and desktop
+- Private by default: contacts never echoed back, lead list is admin-only
 
 ---
 
 # Impact & what's next
 
-**Impact:** every small beauty shop gets a beauty counter inside Telegram — scan, try, order, follow up.
+**Impact:** a beauty counter for every small shop — the right shade and a realistic preview before buying,
+and an order with context instead of "hi, how much?".
 
 **Next:**
-1. Live selfie (consented) + public demo deploy
-2. Multi-shop CSV catalog onboarding
-3. Uzbek / Russian replies
-4. Progress charts from re-scans
-5. More VTO categories (eyeshadow, hair)
+1. CSV catalog onboarding for any shop
+2. Uzbek / Russian replies
+3. Progress chart from the 14-day re-scans
+4. More try-on categories and Instagram DMs
 
-**Built with:** Python · FastAPI · YouCam AI · Telegram Bot API · n8n · Docker · pytest (12)
-
-MIT · Link in description
+**Built with:** Python · FastAPI · YouCam AI · JavaScript · n8n · Docker · Vercel · pytest

@@ -6,12 +6,16 @@ import base64
 import binascii
 import hashlib
 import hmac
+import ipaddress
 import json
 import os
 import re
+import socket
 import struct
 import threading
 import time
+import urllib.error
+import urllib.parse
 import urllib.request
 from collections import OrderedDict
 from pathlib import Path
@@ -229,6 +233,65 @@ def _check_url(url: str | None) -> None:
         raise HTTPException(422, "That photo link doesn't look right. Use a full https:// link to a JPG or PNG.")
 
 
+PHOTO_LINK_TIMEOUT = 8
+
+
+def _public_host(url: str) -> bool:
+    """Only fetch links that resolve to public addresses (no localhost, private ranges or cloud metadata)."""
+    parts = urllib.parse.urlsplit(url)
+    if parts.scheme.lower() not in ("http", "https") or not parts.hostname:
+        return False
+    try:
+        infos = socket.getaddrinfo(parts.hostname, parts.port or (443 if parts.scheme.lower() == "https" else 80),
+                                   proto=socket.IPPROTO_TCP)
+    except (OSError, UnicodeError):
+        return False
+    return bool(infos) and all(ipaddress.ip_address(info[4][0].split("%")[0]).is_global for info in infos)
+
+
+class _CheckedRedirects(urllib.request.HTTPRedirectHandler):
+    max_redirections = 3
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):  # noqa: PLR0913 - stdlib signature
+        if not _public_host(newurl):
+            raise urllib.error.URLError("redirect to a non-public address")
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+
+_opener = urllib.request.build_opener(_CheckedRedirects)
+
+
+PHOTO_LINK_HEADERS = {"User-Agent": "SkinCart/1.0 (+https://skincart-youcam.vercel.app)",
+                      "Accept": "image/jpeg,image/png,image/*;q=0.8"}
+
+
+def _open_url(url: str):
+    req = urllib.request.Request(url, headers=PHOTO_LINK_HEADERS)  # noqa: S310 - http(s) only, see _public_host
+    return _opener.open(req, timeout=PHOTO_LINK_TIMEOUT)
+
+
+def _fetch_photo(url: str) -> bytes:
+    """Download a photo link once, so a dead or non-image link fails in seconds with a clear message
+    (YouCam itself would only time out) and the same format/size checks as an upload apply."""
+    _check_url(url)
+    url = url.strip()
+    if not _public_host(url):
+        raise HTTPException(422, "That photo link isn't publicly reachable. Use a public https:// link to a JPG "
+                                 "or PNG, or upload the photo.")
+    try:
+        with _open_url(url) as resp:
+            data = resp.read(MAX_IMAGE + 1)
+    except urllib.error.HTTPError as exc:
+        raise HTTPException(422, f"We couldn't download that photo link (HTTP {exc.code}). Use a direct link to a "
+                                 "JPG or PNG, or upload the photo.") from None
+    except (urllib.error.URLError, OSError, ValueError):
+        raise HTTPException(422, "We couldn't download that photo link. Use a direct link to a JPG or PNG, or "
+                                 "upload the photo.") from None
+    if len(data) > MAX_IMAGE:
+        raise HTTPException(413, "This photo is too large. Please use one under 10 MB.")
+    return data
+
+
 def _scan_id(image: bytes | None, url: str | None) -> str:
     return hashlib.sha256(image or (url or "").encode()).hexdigest()[:16]
 
@@ -274,6 +337,8 @@ def resolve_scan(scan_id: str, fallback: ScanRef | None = None) -> dict:
             raise HTTPException(413, "This photo is too large. Please use one under 10 MB.")
         url = None if image else fallback.image_url
         _check_url(url)
+        if url and not youcam.mock:
+            image, url = _fetch_photo(url), None
         if (image or url) and _scan_id(image, url) != scan_id:
             raise HTTPException(400, "This photo doesn't match the analyzed one. Please analyze it again.")
         scan = scans.setdefault(scan_id, {"image": image, "url": url, "content_type": fallback.content_type,
@@ -368,6 +433,18 @@ def simulate(body: SimulateIn) -> dict:
 EMAIL_RE = re.compile(r"[^@\s]+@[^@\s]+\.[^@\s]+")
 
 
+def _clean_profile(sent: list[dict] | None) -> list[dict]:
+    """A re-sent skin profile is untrusted: keep only known concerns with a 0-100 score, rebuilt server-side."""
+    out = []
+    for item in sent or []:
+        kind, score = item.get("type") if isinstance(item, dict) else None, item.get("ui_score") if isinstance(
+            item, dict) else None
+        if kind in rec.LABELS and isinstance(score, int | float) and not isinstance(score, bool) and 0 <= score <= 100:
+            out.append({"type": kind, "label": rec.LABELS[kind], "ui_score": int(score),
+                        "severity": rec.severity(int(score))})
+    return out[:3]
+
+
 def create_order(order: OrderIn) -> tuple[dict, bool]:
     items = [rec.get_product(s) for s in dict.fromkeys(order.skus)]  # a repeated SKU is one product, not two
     if any(i is None for i in items):
@@ -378,7 +455,7 @@ def create_order(order: OrderIn) -> tuple[dict, bool]:
     basket = [{"sku": i["sku"], "name": i["name"], "price": i["price"]} for i in items]
     total = round(sum(i["price"] for i in items), 2)
     scan = scans.get(order.scan_id or "", {}).get("result") or {}
-    profile = scan.get("concerns") or (order.skin_profile or [])
+    profile = scan.get("concerns") or _clean_profile(order.skin_profile)
     extra = {"basket": basket, "total": total, "skin_profile": profile,
              "scan_id": order.scan_id, "telegram_chat_id": order.telegram_chat_id}
     msg = f"SkinCart order: {', '.join(b['name'] for b in basket)} (total ${total})"
@@ -442,12 +519,12 @@ async def friendly_validation(_: Request, exc: RequestValidationError) -> JSONRe
     return JSONResponse({"detail": " ".join(messages) or "Invalid request."}, status_code=422)
 
 
-@app.get("/healthz")
+@app.api_route("/healthz", methods=["GET", "HEAD"])
 def healthz() -> dict:
     return {"status": "ok", "youcam": "mock" if youcam.mock else "live"}
 
 
-@app.get("/version")
+@app.api_route("/version", methods=["GET", "HEAD"])
 def version() -> dict:
     return {"version": VERSION, "commit": os.getenv("GIT_COMMIT", "unknown"),
             "youcam": {"mode": "mock" if youcam.mock else "live", "base_url": youcam.base_url,
@@ -455,7 +532,7 @@ def version() -> dict:
             "n8n": bool(os.getenv("N8N_WEBHOOK_URL"))}
 
 
-@app.get("/")
+@app.api_route("/", methods=["GET", "HEAD"])
 def index() -> FileResponse:
     return FileResponse(Path(__file__).parent / "static" / "index.html")
 
@@ -463,7 +540,7 @@ def index() -> FileResponse:
 SAMPLE_FACE = Path(__file__).parent.parent / "docs" / "stock-face" / "stock-face.jpg"
 
 
-@app.get("/sample.jpg")
+@app.api_route("/sample.jpg", methods=["GET", "HEAD"])
 def sample_face() -> FileResponse:
     """Licensed stock portrait (Unsplash, Jake Nackos) so visitors can try the flow without a selfie."""
     if not SAMPLE_FACE.exists():
@@ -471,7 +548,7 @@ def sample_face() -> FileResponse:
     return FileResponse(SAMPLE_FACE, media_type="image/jpeg")
 
 
-@app.get("/catalog")
+@app.api_route("/catalog", methods=["GET", "HEAD"])
 def catalog() -> dict:
     return {"products": rec.CATALOG}
 
@@ -483,6 +560,8 @@ def analyze(body: AnalyzeIn) -> dict:
     image = _decode_b64(body.image_base64) if body.image_base64 else None
     if image is None:
         _check_url(body.image_url)
+        if not youcam.mock:
+            image = _fetch_photo(body.image_url)
     content_type = check_image(image) if image is not None else body.content_type
     return analyze_image(image, body.image_url if not image else None, content_type)
 
@@ -504,7 +583,8 @@ def simulate_endpoint(body: SimulateIn) -> dict:
 
 @app.post("/orders", status_code=201)
 def orders(body: OrderIn) -> dict:
-    lead, created = create_order(body)
+    # Only the bot (in-process) may tag an order as Telegram: a chat id would make n8n message that chat later.
+    lead, created = create_order(body.model_copy(update={"source": "web", "telegram_chat_id": None}))
     return {"created": created, "lead": lead}
 
 

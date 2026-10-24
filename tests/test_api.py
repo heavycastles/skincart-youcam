@@ -162,3 +162,75 @@ def test_lead_detail_hidden_even_with_bad_id(monkeypatch):
     monkeypatch.setenv("ADMIN_TOKEN", "s3cret-token")
     assert client.get("/leads/abc").status_code == 401
     assert client.get("/leads/abc", headers={"X-Admin-Token": "s3cret-token"}).status_code == 404
+
+
+def test_public_order_cannot_pose_as_telegram_or_inject_profile():
+    r = client.post("/orders", json={"name": "Web", "phone": "+998901112233", "skus": ["SC-SPF-09"],
+                                     "source": "telegram", "telegram_chat_id": 12345,
+                                     "skin_profile": [{"x": "y"}, {"type": "acne", "ui_score": 999},
+                                                      {"type": "moisture", "ui_score": 61, "label": "<b>x</b>"}]})
+    assert r.status_code == 201
+    lead = r.json()["lead"]
+    assert lead["source"] == "web"
+    assert lead["extra"]["skin_profile"] == [{"type": "moisture", "label": "dryness", "ui_score": 61,
+                                              "severity": "medium"}]
+    stored = main.store.get(lead["id"])
+    assert stored.source == "web" and stored.extra["telegram_chat_id"] is None
+
+
+def test_head_requests_on_public_pages():
+    for path in ("/", "/healthz", "/version", "/sample.jpg", "/catalog"):
+        r = client.head(path)
+        assert r.status_code == 200, path
+        assert r.headers["x-content-type-options"] == "nosniff"
+
+
+def _live(monkeypatch):
+    monkeypatch.setattr(main.youcam, "mock", False)
+    called = []
+    monkeypatch.setattr(main.youcam, "upload", lambda *a, **k: called.append("upload") or "f1")
+    monkeypatch.setattr(main.youcam, "skin_analysis", lambda **k: called.append("analysis") or [])
+    return called
+
+
+def test_photo_link_to_private_address_is_never_fetched(monkeypatch):
+    called = _live(monkeypatch)
+    opened = []
+    monkeypatch.setattr(main, "_open_url", lambda url: opened.append(url))
+    for url in ("http://127.0.0.1/a.jpg", "http://169.254.169.254/latest/meta-data", "http://10.0.0.5/x.png",
+                "http://localhost:8080/sample.jpg", "http://[::1]/a.jpg"):
+        r = client.post("/analyze", json={"image_url": url})
+        assert r.status_code == 422, url
+        assert "publicly reachable" in r.json()["detail"] or "doesn't look right" in r.json()["detail"]
+    assert opened == [] and called == []
+
+
+def test_dead_or_non_image_photo_link_fails_fast_without_youcam(monkeypatch):
+    import io
+    import urllib.error
+    called = _live(monkeypatch)
+    monkeypatch.setattr(main, "_public_host", lambda url: True)
+
+    def gone(url):
+        raise urllib.error.HTTPError(url, 404, "Not Found", {}, None)
+    monkeypatch.setattr(main, "_open_url", gone)
+    r = client.post("/analyze", json={"image_url": "https://example.com/missing.jpg"})
+    assert r.status_code == 422 and "HTTP 404" in r.json()["detail"]
+
+    monkeypatch.setattr(main, "_open_url", lambda url: io.BytesIO(b"<html>not a photo</html>"))
+    r = client.post("/analyze", json={"image_url": "https://example.com/page.html"})
+    assert r.status_code == 415 and "JPG or PNG" in r.json()["detail"]
+    assert called == []
+
+
+def test_photo_link_is_downloaded_once_and_analyzed_as_an_upload(monkeypatch):
+    import io
+    import struct
+    _live(monkeypatch)
+    monkeypatch.setattr(main, "_public_host", lambda url: True)
+    png = b"\x89PNG\r\n\x1a\n" + b"\x00\x00\x00\x0dIHDR" + struct.pack(">II", 800, 800) + b"rest"
+    monkeypatch.setattr(main, "_open_url", lambda url: io.BytesIO(png))
+    seen = {}
+    monkeypatch.setattr(main, "analyze_image", lambda image, url, ct: seen.update(image=image, url=url, ct=ct) or {})
+    assert client.post("/analyze", json={"image_url": "https://example.com/face.png"}).status_code == 200
+    assert seen == {"image": png, "url": None, "ct": "image/png"}

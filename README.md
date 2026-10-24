@@ -9,7 +9,7 @@ scored lead). The Telegram bot and the n8n workflow are in the repo and run with
 them when they are connected (`/version` reports `telegram` and `n8n`).
 
 **YouCam APIs used:** AI Skin Analysis · AI Skin Simulation · AI Facial Color Tones Analyzer · AI Makeup VTO — all on one
-File API upload (`file_id`). Demo video: [`docs/demo-v4.mp4`](docs/demo-v4.mp4).
+File API upload (`file_id`). **Demo video (2:30):** https://youtu.be/NIFuCn8lOT0 (also [`docs/demo-v4.mp4`](docs/demo-v4.mp4)).
 
 Own photos go through a quick **framing step** (zoom/drag so the face fills the oval), because YouCam Skin Analysis
 needs the face to cover more than 60% of the photo width. Photos are checked before any API call (JPG/PNG, at least
@@ -33,11 +33,11 @@ Small cosmetics shops in Central Asia/CIS sell mostly through Telegram and Insta
    oily → matte, visible redness/spots → more coverage). Lip shades are re-ranked for the undertone.
 6. **YouCam AI Makeup VTO**: try the matched foundation (or a neighbor) and the shop's lipsticks on the same selfie.
 7. "Order" → contact → saved as a **LeadFlow lead** (normalized, de-duplicated, scored, with `skin_profile` + `basket`)
-   → **n8n** notifies the shop owner and sends a 14-day "re-scan your skin" follow-up.
+   → optional **n8n** workflow notifies the shop owner and sends a 14-day "re-scan your skin" follow-up.
 
-## Screenshots (live YouCam API, 19 Oct 2026)
+## Screenshots (live YouCam API, production demo, retaken 24 Oct 2026)
 
-Taken from the running app with a real `YOUCAM_API_KEY` and a licensed stock portrait
+Taken from https://skincart-youcam.vercel.app with the live YouCam API and a licensed stock portrait
 (Jake Nackos / Unsplash, see `docs/stock-face/`).
 
 | Skin snapshot | YouCam overlay masks |
@@ -48,7 +48,7 @@ Taken from the running app with a real `YOUCAM_API_KEY` and a licensed stock por
 | **Upload + scan** | **Order saved as a lead** |
 | ![Upload](docs/screenshots/02-upload-scanning.png) | ![Order](docs/screenshots/08-order-placed.png) |
 
-Added 22 Oct 2026, from the production demo (live API, same stock portrait):
+Skin Simulation, shade match and the morning / evening plan (same live run):
 
 | Skin Simulation of what the basket targets | Foundation shade match (Facial Color Tones) |
 |---|---|
@@ -81,7 +81,7 @@ portrait behind the "Use sample photo" button.
 ```bash
 cp .env.example .env               # optional: YOUCAM_API_KEY, TELEGRAM_BOT_TOKEN
 python -m venv .venv && .venv/bin/pip install -r requirements-dev.txt
-.venv/bin/pytest -q                # 68 tests (offline mock)
+.venv/bin/pytest -q                # 77 tests (offline mock)
 .venv/bin/python serve.py          # http://localhost:8080  (mock mode if no key)
 docker compose up --build          # app :8080 + n8n :5678 (import n8n/skincart-orders.json)
 ```
@@ -132,7 +132,7 @@ A full first visit with the sample photo is 39 units; repeat visits on a warm in
 | Method | Path | |
 |---|---|---|
 | GET | `/` | web demo |
-| POST | `/analyze` | `{image_base64\|image_url}` → scores, basket, try-on SKUs |
+| POST | `/analyze` | `{image_base64\|image_url}` → scores, basket, try-on SKUs (a link is downloaded once, public hosts only, then checked like an upload) |
 | POST | `/simulate` | `{scan_id, skus, scores?}` → Skin Simulation image URL + intensities + targeted concerns |
 | POST | `/shade` | `{scan_id, scores?}` → skin/lip color, undertone, depth, matched shade + neighbors + 12-shade range, finish/coverage, ranked lip shades |
 | POST | `/tryon` | `{scan_id, sku}` → VTO image URL (lip shades and any foundation shade) |
@@ -149,7 +149,7 @@ A full first visit with the sample photo is 39 units; repeat visits on a warm in
 
 ## Demo video & docs
 
-- **Demo video** (2:30, 1080p, recorded on the live production demo in one take): [`docs/demo-v4.mp4`](docs/demo-v4.mp4)
+- **Demo video** (2:30, 1080p, recorded on the live production demo in one take): https://youtu.be/NIFuCn8lOT0 · file [`docs/demo-v4.mp4`](docs/demo-v4.mp4)
   · subtitles [`docs/demo-v4.srt`](docs/demo-v4.srt) · cover [`docs/demo-v4-cover.png`](docs/demo-v4-cover.png)
   · script [`docs/video-script-v4.md`](docs/video-script-v4.md)
 - Slides PDF: [`docs/slides.pdf`](docs/slides.pdf) · cover: [`docs/cover.png`](docs/cover.png)
