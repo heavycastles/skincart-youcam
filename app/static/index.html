@@ -176,7 +176,7 @@ footer{border-top:1px solid var(--line);padding:22px 0 30px;color:var(--muted);f
    <div class="steps" id="steps"><span class="step on" data-s="1"><b>1</b>Selfie</span><span class="step" data-s="2"><b>2</b>Skin analysis</span><span class="step" data-s="3"><b>3</b>Try-on</span><span class="step" data-s="4"><b>4</b>Checkout</span></div>
   </div>
   <div>
-   <div class="stage"><div class="drop" id="drop" role="button" tabindex="0" aria-label="Drop a selfie here, or press to choose a photo">
+   <div class="stage"><div class="drop" id="drop" role="button" tabindex="0" aria-label="Drop a selfie here, front-facing, good light, no filters. Press to choose a photo">
      <div class="ph"><svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#d987a4" stroke-width="1.6"><circle cx="12" cy="9" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg><div><b>Drop a selfie here</b><br><small>front-facing, good light, no filters</small></div></div>
      <img id="preview" alt="Your photo" hidden><img id="frameImg" alt="Photo being framed" hidden draggable="false"><div class="shade" id="shade" hidden></div><div class="guide" id="guide" hidden></div><div class="ghint" id="ghint" hidden>Zoom and drag so your face fills the oval</div><div class="scan"></div>
      <div class="chip" id="chip" aria-live="polite"><span class="spin"></span><span id="chipTxt">Analyzing…</span></div>
@@ -332,7 +332,7 @@ $('drop').addEventListener('wheel',e=>{if(!framing)return;e.preventDefault();zoo
 $('drop').addEventListener('keydown',e=>{if(!framing)return;const k={ArrowLeft:[20,0],ArrowRight:[-20,0],ArrowUp:[0,20],ArrowDown:[0,-20]}[e.key];
  if(k){e.preventDefault();framing.x+=k[0];framing.y+=k[1];layoutFrame()}else if(e.key==='+'||e.key==='=')zoomTo(framing.zoom*1.1);else if(e.key==='-')zoomTo(framing.zoom/1.1);else if(e.key==='Enter'){e.preventDefault();$('frameGo').click()}});
 window.addEventListener('resize',layoutFrame);
-function endFraming(){framing=null;$('drop').classList.remove('framing');$('frameImg').hidden=$('guide').hidden=$('shade').hidden=$('ghint').hidden=true;$('frametools').hidden=true;$('drop').setAttribute('aria-label','Drop a selfie here, or press to choose a photo')}
+function endFraming(){framing=null;$('drop').classList.remove('framing');$('frameImg').hidden=$('guide').hidden=$('shade').hidden=$('ghint').hidden=true;$('frametools').hidden=true;$('drop').setAttribute('aria-label','Drop a selfie here, front-facing, good light, no filters. Press to choose a photo')}
 $('frameCancel').onclick=e=>{e.stopPropagation();endFraming();if(!imgSrc){$('drop').classList.remove('has');document.querySelector('.ph').style.display=''}else{$('preview').hidden=false}};
 $('frameGo').onclick=e=>{e.stopPropagation();if(!framing||busy)return;const g=geom(),im=framing.im;
  const sx=-framing.x/g.s,sy=-framing.y/g.s,sw=g.W/g.s,sh=g.H/g.s;

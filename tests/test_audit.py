@@ -176,7 +176,7 @@ def test_order_basket_errors_name_the_real_problem():
 def test_ui_accessibility_contract():
     html = client.get("/").text
     # the drop zone's accessible name starts with its visible text (WCAG 2.5.3)
-    assert 'aria-label="Drop a selfie here,' in html and "<b>Drop a selfie here</b>" in html
+    assert 'aria-label="Drop a selfie here, front-facing, good light, no filters.' in html and "<b>Drop a selfie here</b>" in html
     # polite live region for results, try-on and shade; reduced motion also stops JS smooth scrolling
     assert 'id="announce" class="sr" role="status" aria-live="polite"' in html
     assert "prefers-reduced-motion: reduce" in html and "behavior:'smooth'" not in html
