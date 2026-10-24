@@ -409,6 +409,10 @@ async def friendly_validation(_: Request, exc: RequestValidationError) -> JSONRe
         loc = [str(x) for x in err.get("loc", ()) if x != "body"]
         if err.get("type") == "json_invalid":
             msg = "The request body must be valid JSON."
+        elif loc and loc[0] == "skus" and err.get("type") == "too_long":
+            msg = "That's too many products for one order (30 at most)."
+        elif loc and loc[0] == "skus" and err.get("type") != "too_short":
+            msg = "One of the products is no longer in the catalog. Please reload the page."
         else:
             msg = next((_FIELD_MESSAGES[part] for part in loc if part in _FIELD_MESSAGES),
                        f"{'.'.join(loc) or 'request'}: {err.get('msg', 'invalid value')}")

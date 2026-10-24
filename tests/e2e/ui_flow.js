@@ -27,9 +27,29 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 
   await p.goto(BASE, {waitUntil: 'networkidle0'});
   check('no horizontal scroll on load', await noScroll());
-  await click('#sample');
+  // odd files never reach the API: each gets one plain sentence
+  const fs = require('fs'), os = require('os'), path = require('path');
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'skincart-'));
+  const fixture = (name, data) => { const f = path.join(tmp, name); fs.writeFileSync(f, data); return f; };
+  const tinyPng = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGP4z8AAAAMBAQDJ/pLvAAAAAElFTkSuQmCC', 'base64');
+  const upload = async (f, re, name) => {
+    await (await p.$('#file')).uploadFile(f);
+    await p.waitForFunction(r => new RegExp(r).test(document.getElementById('status').innerText), {timeout: 5000}, re.source).catch(() => {});
+    check(name, re.test(await ev(() => document.getElementById('status').innerText)));
+  };
+  await upload(fixture('notes.txt', 'hello'), /isn\u2019t a photo/, 'text file is refused with a sentence');
+  await upload(fixture('broken.jpg', 'not really a jpeg'), /couldn\u2019t open this file/, 'broken image is refused with a sentence');
+  await upload(fixture('tiny.png', tinyPng), /too small \(1\u00d71 px\)/, 'tiny image is refused with its size');
+  await upload(fixture('photo.heic', Buffer.concat([Buffer.from('\0\0\0\x18ftypheic'), Buffer.alloc(64)])), /HEIC/, 'HEIC gets the iPhone hint');
+  check('odd files cost no API call', requests.filter(x => x === '/analyze').length === 0);
+
+  // double-click on the sample = one analysis (each one would be a paid YouCam task)
+  await ev(() => { const x = document.getElementById('sample'); x.click(); x.click(); });
   await p.waitForSelector('#res.show', {timeout: 30000});
-  await sleep(500);
+  await sleep(800);
+  check('sample: one analysis for a double click', requests.filter(x => x === '/analyze').length === 1);
+  check('analysis is announced to screen readers', /Skin analysis ready/.test(await ev(() => document.getElementById('announce').innerText)));
+  check('focus moves to the results', await ev(() => document.activeElement && document.activeElement.id === 'resHead'));
   const basket0 = await lines();
   check('routine fills the basket', basket0.length >= 3);
 
@@ -45,6 +65,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   await sleep(200);
   const lips = await ev(() => [...document.querySelectorAll('#shades .sw')].map(e => e.id).filter(i => i.includes('LIP')));
   await click('#' + lips[0]); await settle();
+  check('try-on is announced', /Try-on ready/.test(await ev(() => document.getElementById('announce').innerText)));
   check('sim not stale after a lip try-on', (await ev(() => document.getElementById('simBtn').innerText)) === 'Preview on my photo');
   // trying a second lip swaps the first one
   await click('#' + lips[1]); await settle();

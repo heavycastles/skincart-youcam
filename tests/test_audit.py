@@ -162,3 +162,26 @@ def test_ui_handles_non_json_errors_and_has_accessible_controls():
     for needed in ('for="phone"', 'for="email"', 'role="alert"', 'aria-label="Zoom photo"', "dragover",
                    "startFraming", "tryTok"):
         assert needed in html
+
+
+def test_order_basket_errors_name_the_real_problem():
+    def order(skus):
+        return client.post("/orders", json={"name": "Ann", "phone": "+998901234567", "skus": skus}).json()["detail"]
+    assert order(["SC-SPF-09"] * 31).startswith("That's too many products")
+    assert "no longer in the catalog" in order("SC-SPF-09")
+    assert "no longer in the catalog" in order([{"sku": 1}])
+    assert order([]) == "Your basket is empty. Add at least one product."
+
+
+def test_ui_accessibility_contract():
+    html = client.get("/").text
+    # the drop zone's accessible name starts with its visible text (WCAG 2.5.3)
+    assert 'aria-label="Drop a selfie here,' in html and "<b>Drop a selfie here</b>" in html
+    # polite live region for results, try-on and shade; reduced motion also stops JS smooth scrolling
+    assert 'id="announce" class="sr" role="status" aria-live="polite"' in html
+    assert "prefers-reduced-motion: reduce" in html and "behavior:'smooth'" not in html
+    # card titles stay in heading order (h2 -> h3), no skipped levels
+    assert "<h4" not in html
+    # the sample button is locked before its photo is fetched, so a double-click is one paid analysis
+    handler = html[html.index("$('sample').onclick"):]
+    assert handler.index("setBusy(true)") < handler.index("fetch('/sample.jpg')")
