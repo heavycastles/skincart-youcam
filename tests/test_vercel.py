@@ -34,5 +34,9 @@ def test_youcam_timeout_fits_serverless_limit(monkeypatch):
     monkeypatch.setenv("VERCEL", "1")
     assert YouCamClient(api_key="").timeout < json.loads((ROOT / "vercel.json").read_text())[
         "functions"]["app/main.py"]["maxDuration"]
+    from app.main import PHOTO_LINK_TIMEOUT
+    limit = json.loads((ROOT / "vercel.json").read_text())["functions"]["app/main.py"]["maxDuration"]
+    # worst case: download a photo link, then the whole YouCam budget, plus cold start and response
+    assert PHOTO_LINK_TIMEOUT + YouCamClient(api_key="").timeout + 8 <= limit
     monkeypatch.setenv("YOUCAM_TIMEOUT", "30")
     assert YouCamClient(api_key="").timeout == 30

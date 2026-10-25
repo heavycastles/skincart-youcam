@@ -57,8 +57,10 @@ def live(monkeypatch):
     monkeypatch.setattr(main.youcam, "mock", False)
     monkeypatch.setattr(main.youcam, "upload", lambda image, ct: "FID")
     main.scans.clear()
+    main.rejected.clear()
     yield main.youcam
     main.scans.clear()
+    main.rejected.clear()
 
 
 @pytest.mark.parametrize(("code", "status", "words"), [

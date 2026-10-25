@@ -76,6 +76,36 @@ class ScanCache(OrderedDict):
 
 
 scans: ScanCache = ScanCache()
+# scan_id -> YouCam code for photos YouCam has already rejected (no face, too dark...): the same bytes would fail
+# the same way, so a re-submit answers instantly instead of starting another task.
+rejected: OrderedDict[str, str] = OrderedDict()
+
+_inflight_guard = threading.Lock()
+_inflight: dict[str, list] = {}  # key -> [lock, waiters]
+
+
+class single_flight:  # noqa: N801 - used as a context manager
+    """Serialize work on one key, so a double-click or a retried request waits for the first paid YouCam call
+    and then reads its cached result instead of starting a second task."""
+
+    def __init__(self, key: str) -> None:
+        self.key = key
+
+    def __enter__(self):
+        with _inflight_guard:
+            entry = _inflight.setdefault(self.key, [threading.Lock(), 0])
+            entry[1] += 1
+        entry[0].acquire()
+        return self
+
+    def __exit__(self, *exc):
+        with _inflight_guard:
+            entry = _inflight[self.key]
+            entry[0].release()
+            entry[1] -= 1
+            if not entry[1]:
+                del _inflight[self.key]
+        return False
 
 # YouCam error code -> (HTTP status, what the visitor should do). Raw details go to the server log only.
 FRIENDLY_ERRORS: dict[str, tuple[int, str]] = {
@@ -99,6 +129,11 @@ FRIENDLY_ERRORS: dict[str, tuple[int, str]] = {
     "http_429": (503, "YouCam is busy right now. Please wait a few seconds and try again."),
 }
 GENERIC_ERROR = (502, "YouCam couldn't process this request right now. Please try again, or use the sample photo.")
+
+
+def _photo_problem(code: str) -> bool:
+    """YouCam rejected the photo itself; retrying the same bytes can't help."""
+    return code in FRIENDLY_ERRORS and FRIENDLY_ERRORS[code][0] in (413, 415, 422)
 
 
 def youcam_http_error(exc: YouCamError) -> HTTPException:
@@ -270,6 +305,25 @@ def _open_url(url: str):
     return _opener.open(req, timeout=PHOTO_LINK_TIMEOUT)
 
 
+class _SlowLink(Exception):
+    pass
+
+
+def _read_with_deadline(resp, deadline: float) -> bytes:
+    """Read at most MAX_IMAGE + 1 bytes; a server that trickles bytes can't hold the request past the deadline
+    (the socket timeout alone only limits the gap between two packets)."""
+    chunks, size = [], 0
+    while size <= MAX_IMAGE:
+        if time.monotonic() > deadline:
+            raise _SlowLink
+        chunk = resp.read(min(256 * 1024, MAX_IMAGE + 1 - size))
+        if not chunk:
+            break
+        chunks.append(chunk)
+        size += len(chunk)
+    return b"".join(chunks)
+
+
 def _fetch_photo(url: str) -> bytes:
     """Download a photo link once, so a dead or non-image link fails in seconds with a clear message
     (YouCam itself would only time out) and the same format/size checks as an upload apply."""
@@ -280,10 +334,13 @@ def _fetch_photo(url: str) -> bytes:
                                  "or PNG, or upload the photo.")
     try:
         with _open_url(url) as resp:
-            data = resp.read(MAX_IMAGE + 1)
+            data = _read_with_deadline(resp, time.monotonic() + PHOTO_LINK_TIMEOUT)
     except urllib.error.HTTPError as exc:
         raise HTTPException(422, f"We couldn't download that photo link (HTTP {exc.code}). Use a direct link to a "
                                  "JPG or PNG, or upload the photo.") from None
+    except (_SlowLink, TimeoutError):
+        raise HTTPException(422, "That photo link is too slow to download. Upload the photo instead, or use a "
+                                 "faster direct link to a JPG or PNG.") from None
     except (urllib.error.URLError, OSError, ValueError):
         raise HTTPException(422, "We couldn't download that photo link. Use a direct link to a JPG or PNG, or "
                                  "upload the photo.") from None
@@ -302,8 +359,15 @@ def analyze_image(image: bytes | None, url: str | None, content_type: str = "ima
     if image is not None and not youcam.mock:
         content_type = check_image(image)
     scan_id = _scan_id(image, url)
+    with single_flight("analyze:" + scan_id):
+        return _analyze_once(scan_id, image, url, content_type)
+
+
+def _analyze_once(scan_id: str, image: bytes | None, url: str | None, content_type: str) -> dict:
     if scan_id in scans and scans[scan_id].get("result"):
         return scans[scan_id]["result"] | {"cached": True, "api_calls": 0, "units": 0}
+    if scan_id in rejected:
+        raise youcam_http_error(YouCamError("same photo was already rejected", rejected[scan_id]))
     started, file_id, calls0 = time.monotonic(), None, youcam.calls
     youcam.begin()
     try:
@@ -311,6 +375,10 @@ def analyze_image(image: bytes | None, url: str | None, content_type: str = "ima
             file_id = youcam.upload(image, content_type)  # one upload, reused by every try-on of this scan
         scores = youcam.skin_analysis(image=image, url=url, content_type=content_type, file_id=file_id)
     except YouCamError as exc:
+        if _photo_problem(exc.code):
+            rejected[scan_id] = exc.code
+            while len(rejected) > 4 * MAX_SCANS:
+                rejected.popitem(last=False)
         raise youcam_http_error(exc) from exc
     finally:
         youcam.end()
@@ -356,7 +424,7 @@ def run_on_scan(scan: dict, call):
         try:
             return call(file_id=scan.get("file_id"), **args)
         except YouCamError as exc:
-            if not scan.get("file_id") or exc.code == "timeout" or not (scan["image"] or scan["url"]):
+            if not _file_may_have_expired(exc.code, scan):
                 raise
             return call(**args)  # file expired -> upload again
     except YouCamError as exc:
@@ -365,15 +433,33 @@ def run_on_scan(scan: dict, call):
         youcam.end()
 
 
+def _file_may_have_expired(code: str, scan: dict) -> bool:
+    """Re-upload only when the stored file_id may be stale. Busy/slow/unreachable YouCam or a photo problem
+    would fail again, and a second paid attempt would only push the request past the serverless time limit."""
+    if not scan.get("file_id") or not (scan["image"] or scan["url"]):
+        return False
+    return not (code in FRIENDLY_ERRORS or code in ("network", "bad_response") or code.startswith("http_5"))
+
+
+def _cached_or_run(scan: dict, scan_id: str, key: str, call):
+    """(value, cached) for one paid sub-task of a scan; concurrent duplicates share a single YouCam call."""
+    if key in scan:
+        return scan[key], True
+    with single_flight(f"{scan_id}|{key}"):
+        if key in scan:
+            return scan[key], True
+        scan[key] = run_on_scan(scan, call)
+        return scan[key], False
+
+
 def tryon(scan_id: str, sku: str, fallback: TryOnIn | None = None) -> dict:
     scan, product = resolve_scan(scan_id, fallback), rec.get_product(sku)
     if not product or not product.get("vto"):
         raise HTTPException(400, "This product has no virtual try-on.")
     key = f"vto:{sku}"
-    calls0, started, cached = youcam.calls, time.monotonic(), key in scan
-    if not cached:
-        scan[key] = run_on_scan(scan, lambda **kw: youcam.makeup_vto([product["vto"]], **kw))
-    return {"scan_id": scan_id, "sku": sku, "image_url": scan[key], "api_calls": youcam.calls - calls0,
+    calls0, started = youcam.calls, time.monotonic()
+    image_url, cached = _cached_or_run(scan, scan_id, key, lambda **kw: youcam.makeup_vto([product["vto"]], **kw))
+    return {"scan_id": scan_id, "sku": sku, "image_url": image_url, "api_calls": youcam.calls - calls0,
             "cached": cached, "units": 0 if cached else _units("makeup_vto"),
             "elapsed_ms": round((time.monotonic() - started) * 1000)}
 
@@ -396,11 +482,10 @@ def _scores_for(scan: dict, sent: list[ScoreIn] | None) -> list[dict]:
 def shade_match(body: ShadeIn) -> dict:
     """Facial Color Tones Analyzer -> undertone, depth, nearest foundation shade, formula and lip ranking."""
     scan = resolve_scan(body.scan_id, body)
-    calls0, started, cached = youcam.calls, time.monotonic(), "tones" in scan
-    if not cached:
-        scan["tones"] = run_on_scan(scan, youcam.skin_tone)
+    calls0, started = youcam.calls, time.monotonic()
+    tones, cached = _cached_or_run(scan, body.scan_id, "tones", youcam.skin_tone)
     try:
-        result = shade_mod.match(scan["tones"], _scores_for(scan, body.scores))
+        result = shade_mod.match(tones, _scores_for(scan, body.scores))
     except ValueError as exc:
         raise HTTPException(502, "YouCam couldn't read a skin color from this photo. "
                                  "Please try another selfie.") from exc
@@ -421,11 +506,11 @@ def simulate(body: SimulateIn) -> dict:
     if not plan["params"]:
         raise HTTPException(422, "Add a skincare product to your basket to preview what it targets.")
     key = "sim:" + ",".join(f"{k}={v:.2f}" for k, v in plan["params"].items())
-    calls0, started, cached = youcam.calls, time.monotonic(), key in scan
-    if not cached:
-        scan[key] = run_on_scan(scan, lambda **kw: youcam.skin_simulation(plan["params"], **kw))
+    calls0, started = youcam.calls, time.monotonic()
+    image_url, cached = _cached_or_run(scan, body.scan_id, key,
+                                       lambda **kw: youcam.skin_simulation(plan["params"], **kw))
     tier = "skin_simulation_1_4" if len(plan["params"]) <= 4 else "skin_simulation_5_10"
-    return {"scan_id": body.scan_id, "image_url": scan[key], "params": plan["params"], "concerns": plan["concerns"],
+    return {"scan_id": body.scan_id, "image_url": image_url, "params": plan["params"], "concerns": plan["concerns"],
             "mode": "mock" if youcam.mock else "live", "cached": cached, "api_calls": youcam.calls - calls0,
             "units": 0 if cached else _units(tier), "elapsed_ms": round((time.monotonic() - started) * 1000)}
 

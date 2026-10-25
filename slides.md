@@ -92,7 +92,7 @@ Telegram bot ──┘         │
                          └─ n8n webhook (owner alert + day-14 re-scan), optional
 ```
 
-Vercel (serverless FastAPI) · Docker Compose · 77 pytest cases incl. headless-browser runs at 1280 and 375 px
+Vercel (serverless FastAPI) · Docker Compose · 101 pytest cases incl. headless-browser runs at 1280 and 375 px
 
 ---
 

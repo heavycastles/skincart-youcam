@@ -81,7 +81,7 @@ portrait behind the "Use sample photo" button.
 ```bash
 cp .env.example .env               # optional: YOUCAM_API_KEY, TELEGRAM_BOT_TOKEN
 python -m venv .venv && .venv/bin/pip install -r requirements-dev.txt
-.venv/bin/pytest -q                # 77 tests (offline mock)
+.venv/bin/pytest -q                # 101 tests (offline mock)
 .venv/bin/python serve.py          # http://localhost:8080  (mock mode if no key)
 docker compose up --build          # app :8080 + n8n :5678 (import n8n/skincart-orders.json)
 ```
@@ -102,7 +102,7 @@ All optional — with none set, the app runs fully offline in mock mode. Copy `.
 | `YOUCAM_API_KEY` | `your-youcam-api-key` | YouCam API key ([API console](https://yce.makeupar.com/api-console/en/api-keys/)); empty = mock mode |
 | `YOUCAM_MOCK` | `1` | Force mock mode even when a key is set (saves units) |
 | `YOUCAM_BASE_URL` | `https://yce-api-01.makeupar.com` | YouCam API server |
-| `YOUCAM_TIMEOUT` | `45` | Seconds to poll a task before giving up (default 45 on Vercel, 120 elsewhere) |
+| `YOUCAM_TIMEOUT` | `40` | Seconds one request may spend on YouCam before giving up (default 40 on Vercel, 120 elsewhere) |
 | `TELEGRAM_BOT_TOKEN` | `123456:your-bot-token` | Telegram bot (webhook or `python -m app.telegram` long polling) |
 | `TELEGRAM_WEBHOOK_SECRET` | `change-me` | Checked against Telegram's secret-token header on `/telegram/webhook` |
 | `OWNER_CHAT_ID` | `123456789` | Shop owner's Telegram chat, notified by the n8n workflow about new orders |
@@ -161,7 +161,13 @@ A full first visit with the sample photo is 39 units; repeat visits on a warm in
 Hosted on Vercel (Python runtime, FastAPI preset): https://skincart-youcam.vercel.app
 
 - `vercel.json` sets the FastAPI framework and `maxDuration: 60` for `app/main.py`; on Vercel the YouCam
-  client stops polling at 45 s (`YOUCAM_TIMEOUT`) so a slow task fails cleanly instead of being killed.
+  client gives up after 40 s (`YOUCAM_TIMEOUT`) and a photo link must download within 8 s, so a slow task
+  fails cleanly with a "Try again" button instead of being killed at 60 s.
+- When YouCam is busy or flaky: a 429 on upload/create is resent after a short wait (Retry-After, max 4 s,
+  only while time is left); a 429 / 5xx / dropped connection while polling keeps polling the already queued
+  task; a second paid attempt happens only if the uploaded file may have expired. Double clicks and retried
+  requests for the same photo, shade, try-on or preview share one YouCam task, and a photo YouCam rejected
+  (no face, too dark...) is answered from memory instead of being sent again.
 - `.vercelignore` is an allow-list (app, requirements, VERSION, stock face); `.env`, `.venv`, tests, scripts
   and videos are never uploaded.
 - `YOUCAM_API_KEY` is a sensitive project env var, `YOUCAM_MOCK=0`.
@@ -169,7 +175,7 @@ Hosted on Vercel (Python runtime, FastAPI preset): https://skincart-youcam.verce
   and `POST /orders` returns only a receipt for that order, never a stored lead's name/phone/email.
 - Serverless instances don't share memory, so the browser re-sends the photo / `file_id` (and the skin scores)
   with `/tryon`, `/simulate` and `/shade`, and the skin profile with `/orders`; no second skin analysis is needed. Large phone photos are scaled to 2048 px
-  in the browser to stay under the request-size limit.
+  in the browser (and re-compressed if still over ~2.2 MB) to stay under Vercel's 4.5 MB request limit.
 
 ```bash
 vercel deploy --prod

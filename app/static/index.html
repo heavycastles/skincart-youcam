@@ -104,7 +104,7 @@ input.f{width:100%;padding:12px 13px;border:1px solid var(--line);border-radius:
 .api{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.api span{font:600 11.5px ui-monospace,Menlo,monospace;background:#f6f1f4;border-radius:8px;padding:4px 8px;color:#6b3550}
 footer{border-top:1px solid var(--line);padding:22px 0 30px;color:var(--muted);font-size:12.5px}
 .err{color:var(--hi);font-weight:600}
-#status:empty{display:none}#status{background:#fff1f3;border:1px solid #f7c6d0;border-radius:14px;padding:12px 14px;margin:0 0 18px;font-weight:600}
+#status:empty{display:none}#retryRow{margin:-8px 0 18px}#retryRow[hidden]{display:none}#status{background:#fff1f3;border:1px solid #f7c6d0;border-radius:14px;padding:12px 14px;margin:0 0 18px;font-weight:600}
 .sr{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
 :focus-visible{outline:3px solid #f08aac;outline-offset:2px}
 .drop.dragover{border-color:var(--rose);background:#ffeaf1}
@@ -187,6 +187,7 @@ footer{border-top:1px solid var(--line);padding:22px 0 30px;color:var(--muted);f
   </div>
  </div>
  <p id="status" class="err" role="alert" aria-live="assertive"></p>
+ <div id="retryRow" hidden><button class="btn sec" id="retry" type="button">Try again</button></div>
  <p id="announce" class="sr" role="status" aria-live="polite"></p>
 
  <section class="res" id="res"><div class="grid"><div>
@@ -263,12 +264,12 @@ footer{border-top:1px solid var(--line);padding:22px 0 30px;color:var(--muted);f
 </main>
 <footer><div class="wrap">SkinCart · built on the YouCam Skin Analysis, Skin Simulation, Facial Color Tones and Makeup VTO APIs · <span id="tgNote">Telegram bot version included in the repo</span> · not medical advice · MIT</div></footer>
 <script>
-const $=id=>document.getElementById(id);let scan=null,cart=new Set(),imgSrc=null,busy=false,calls=0,units=0,tryTok=0,trying=null,ordering=false,shadeData=null,simBusy=false,shadeBusy=false,simShownFor=null,autoLip=null,shown=null;
+const $=id=>document.getElementById(id);let lastRun=null,scan=null,cart=new Set(),imgSrc=null,busy=false,calls=0,units=0,tryTok=0,trying=null,ordering=false,shadeData=null,simBusy=false,shadeBusy=false,simShownFor=null,autoLip=null,shown=null;
 const vtoCache=new Map(),simCache=new Map(); // per scan: re-showing a render costs no new YouCam task
 const COLORS={cleanser:['#d9ecf7','#9cc9e6'],serum:['#ffe7c7','#f3b874'],treatment:['#e6dcfb','#a58be6'],eye:['#dff3ea','#87cfae'],moisturizer:['#fde3ea','#ef9ab4'],spf:['#fff4c4','#efcf55'],makeup:['#f9d9df','#c94f6d']};
 const sevColor=v=>v<50?'var(--hi)':v<70?'var(--mid)':v<80?'#d987a4':'var(--ok)';
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const MIN_SIDE=480,MAX_FILE=25e6;
+const MIN_SIDE=480,MAX_FILE=25e6,MAX_B64=3e6; // Vercel rejects request bodies over 4.5 MB: keep the JSON well below
 const calm=matchMedia('(prefers-reduced-motion: reduce)');const SB=()=>calm.matches?'auto':'smooth';
 const announce=m=>{const a=$('announce');a.textContent='';setTimeout(()=>a.textContent=m,60)};
 fetch('/version').then(r=>r.json()).then(v=>{const live=v.youcam.mode==='live';$('mode').classList.toggle('live',live);$('modeTxt').textContent='YouCam API · '+(live?'LIVE':'mock');
@@ -283,7 +284,7 @@ async function post(url,body,ms=70000){const ctl=new AbortController(),t=setTime
  let j=null;try{j=await r.json()}catch(e){}
  if(!r.ok){const d=j&&j.detail;const e=new Error(typeof d==='string'?d:Array.isArray(d)?d.map(x=>x.msg).join(' '):(FALLBACK[r.status]||`Something went wrong (HTTP ${r.status}). Please try again.`));e.code=r.headers.get('X-SkinCart-Error');e.status=r.status;throw e}
  if(!j)throw new Error('Unexpected server response. Please try again.');return j}
-function say(msg){$('status').textContent=msg||'';if(msg)$('status').scrollIntoView({behavior:SB(),block:'center'})}
+function say(msg){$('status').textContent=msg||'';$('retryRow').hidden=true;if(msg)$('status').scrollIntoView({behavior:SB(),block:'center'})}
 function step(n){document.querySelectorAll('.step').forEach(e=>{const s=+e.dataset.s;e.classList.toggle('on',s===n);e.classList.toggle('done',s<n)})}
 function setBusy(b){busy=b;$('pick').disabled=$('sample').disabled=b;$('drop').setAttribute('aria-busy',b)}
 
@@ -339,8 +340,14 @@ $('frameGo').onclick=e=>{e.stopPropagation();if(!framing||busy)return;const g=ge
  if(Math.min(sw,sh)<MIN_CROP-1)return say('Zoomed in too far for this photo. Zoom out a little and try again.');
  const k=Math.min(2048/Math.max(sw,sh),Math.max(1,MIN_SIDE/Math.min(sw,sh))),c=document.createElement('canvas');c.width=Math.round(sw*k);c.height=Math.round(sh*k);
  const ctx=c.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,c.width,c.height);ctx.drawImage(im,sx,sy,sw,sh,0,0,c.width,c.height);
- const last={im,zoom:framing.zoom};endFraming();run(c.toDataURL('image/jpeg',0.9),'image/jpeg',last)};
+ const last={im,zoom:framing.zoom};endFraming();run(encodeJpeg(c),'image/jpeg',last)};
+function encodeJpeg(c){let q=0.9,u=c.toDataURL('image/jpeg',q); // grainy 2048 px photos can exceed the upload limit
+ while(u.length>MAX_B64){if(q>0.6)q-=0.1;else{const k=Math.max(0.7,MIN_SIDE/Math.min(c.width,c.height));if(k>=1)break;
+  const d=document.createElement('canvas');d.width=Math.round(c.width*k);d.height=Math.round(c.height*k);d.getContext('2d').drawImage(c,0,0,d.width,d.height);c=d}
+  u=c.toDataURL('image/jpeg',q)}
+ return u}
 
+$('retry').onclick=()=>{if(!busy&&lastRun)run(...lastRun)};
 $('sample').onclick=async()=>{if(busy)return;setBusy(true);endFraming();say(''); // busy before the fetch: a double-click must not start two analyses
  let b64;try{const r=await fetch('/sample.jpg');if(!r.ok)throw 0;b64=await readURL(await r.blob())}catch(e){setBusy(false);return say('Couldn\u2019t load the sample photo. Please try again.')}
  $('credit').hidden=false;run(b64,'image/jpeg',null)};
@@ -351,6 +358,7 @@ async function run(b64,type,reframe){setBusy(true);say('');const prevSrc=imgSrc;
  const t=setInterval(()=>{k=Math.min(k+1,msgs.length-1);$('chipTxt').textContent=msgs[k]},k<3?2200:6000);
  let res;try{res=await post('/analyze',{image_base64:b64,content_type:type})}catch(e){clearInterval(t);$('drop').classList.remove('scanning');setBusy(false);
   say('Analysis failed: '+e.message);
+  if(!e.status||e.status===429||e.status>=500){lastRun=[b64,type,reframe];$('retryRow').hidden=false} // YouCam busy/slow: one tap to resend the same photo
   if(reframe&&e.status===422&&/face_too_small|face_out_of_bound/.test(e.code||'')){startFraming(reframe.im,reframe.zoom*(e.code==='error_src_face_too_small'?1.4:1/1.3))}
   else if(prevSrc){pv.src=prevSrc}else{pv.hidden=true;$('drop').classList.remove('has');document.querySelector('.ph').style.display='';step(1)}
   return}

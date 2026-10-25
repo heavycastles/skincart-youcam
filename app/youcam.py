@@ -54,6 +54,21 @@ def _result_url(data: dict, task: str) -> str:
     raise YouCamError(f"{task}: no result url in response", "bad_response")
 
 
+RATE_LIMIT_RETRIES = 2  # 429 on create/upload: wait briefly and resend (only while the time budget allows)
+
+
+def _retry_after(headers, attempt: int) -> float:
+    """Seconds to wait after a 429: the server's Retry-After (capped at 4 s) or a short backoff."""
+    try:
+        return min(4.0, max(0.5, float((headers or {}).get("Retry-After"))))
+    except (TypeError, ValueError):
+        return 1.5 * (attempt + 1)
+
+
+def _transient(code: str) -> bool:
+    return code in ("http_429", "network", "timeout") or code.startswith("http_5")
+
+
 class YouCamError(RuntimeError):
     """``code`` is YouCam's machine-readable error (e.g. ``error_src_face_too_small``), ``timeout``,
     ``network`` or ``http_<status>``; the message keeps the raw detail for server logs only."""
@@ -88,7 +103,7 @@ class YouCamClient:
         env_mock = os.getenv("YOUCAM_MOCK", "").lower() in {"1", "true", "yes"}
         self.mock = (not self.api_key) or env_mock if mock is None else mock
         if timeout is None:  # serverless hosts (Vercel sets VERCEL=1) stop a function at 60 s: fail cleanly first
-            timeout = float(os.getenv("YOUCAM_TIMEOUT") or (45 if os.getenv("VERCEL") else 120))
+            timeout = float(os.getenv("YOUCAM_TIMEOUT") or (40 if os.getenv("VERCEL") else 120))
         self.poll_interval, self.timeout = poll_interval, timeout
         self.calls = 0
         self._local = threading.local()  # per-request deadline (sync routes run in a thread pool)
@@ -118,24 +133,30 @@ class YouCamClient:
             data = body
         if url.startswith(self.base_url):
             hdrs["Authorization"] = f"Bearer {self.api_key}"
-        req = urllib.request.Request(url, data=data, method=method, headers=hdrs)  # noqa: S310
-        remaining = self._remaining()
-        if remaining <= 0:
-            raise YouCamError("time budget used up before the request", "timeout")
-        try:
-            with urllib.request.urlopen(req, timeout=max(1.0, min(60.0, remaining))) as resp:  # noqa: S310
-                raw = resp.read()
-        except urllib.error.HTTPError as exc:
-            detail = exc.read().decode(errors="replace")[:500]
-            raise YouCamError(f"{method} {url.split('?')[0]} -> {exc.code}: {detail}",
-                              _error_code(detail, f"http_{exc.code}")) from exc
-        except TimeoutError as exc:
-            raise YouCamError(f"{method} {url.split('?')[0]} timed out", "timeout") from exc
-        except urllib.error.URLError as exc:
-            code = "timeout" if isinstance(exc.reason, TimeoutError) else "network"
-            raise YouCamError(f"{method} {url.split('?')[0]} failed: {exc.reason}", code) from exc
-        except OSError as exc:  # connection reset mid-read etc.
-            raise YouCamError(f"{method} {url.split('?')[0]} failed: {exc}", "network") from exc
+        for attempt in range(RATE_LIMIT_RETRIES + 1):
+            req = urllib.request.Request(url, data=data, method=method, headers=hdrs)  # noqa: S310
+            remaining = self._remaining()
+            if remaining <= 0:
+                raise YouCamError("time budget used up before the request", "timeout")
+            try:
+                with urllib.request.urlopen(req, timeout=max(1.0, min(60.0, remaining))) as resp:  # noqa: S310
+                    raw = resp.read()
+                break
+            except urllib.error.HTTPError as exc:
+                wait = _retry_after(exc.headers, attempt)
+                if exc.code == 429 and attempt < RATE_LIMIT_RETRIES and self._remaining() > wait + 10:
+                    time.sleep(wait)  # rate limited: the request was not processed, so it is safe to send again
+                    continue
+                detail = exc.read().decode(errors="replace")[:500] if exc.fp else ""
+                raise YouCamError(f"{method} {url.split('?')[0]} -> {exc.code}: {detail}",
+                                  _error_code(detail, f"http_{exc.code}")) from exc
+            except TimeoutError as exc:
+                raise YouCamError(f"{method} {url.split('?')[0]} timed out", "timeout") from exc
+            except urllib.error.URLError as exc:
+                code = "timeout" if isinstance(exc.reason, TimeoutError) else "network"
+                raise YouCamError(f"{method} {url.split('?')[0]} failed: {exc.reason}", code) from exc
+            except OSError as exc:  # connection reset mid-read etc.
+                raise YouCamError(f"{method} {url.split('?')[0]} failed: {exc}", "network") from exc
         self.calls += 1
         if not raw.strip().startswith(b"{"):
             return {}
@@ -165,7 +186,15 @@ class YouCamClient:
             raise YouCamError(f"{task}: no task_id in response", "bad_response") from exc
         deadline = time.monotonic() + min(self.timeout, self._remaining())
         while True:
-            data = (self._request("GET", f"{self.base_url}/s2s/v2.0/task/{task}/{task_id}") or {}).get("data") or {}
+            try:
+                data = (self._request("GET", f"{self.base_url}/s2s/v2.0/task/{task}/{task_id}") or {}).get(
+                    "data") or {}
+            except YouCamError as exc:
+                # The task is already queued (and will be billed if it succeeds): a hiccup while *checking*
+                # on it (429, 5xx, dropped connection, one slow poll) must not throw that work away.
+                if not _transient(exc.code) or time.monotonic() + self.poll_interval > deadline:
+                    raise
+                data = {"task_status": "retrying"}
             status = data.get("task_status")
             if status == "success":
                 return data
