@@ -165,9 +165,10 @@ Hosted on Vercel (Python runtime, FastAPI preset): https://skincart-youcam.verce
   fails cleanly with a "Try again" button instead of being killed at 60 s.
 - When YouCam is busy or flaky: a 429 on upload/create is resent after a short wait (Retry-After, max 4 s,
   only while time is left); a 429 / 5xx / dropped connection while polling keeps polling the already queued
-  task; a second paid attempt happens only if the uploaded file may have expired. Double clicks and retried
-  requests for the same photo, shade, try-on or preview share one YouCam task, and a photo YouCam rejected
-  (no face, too dark...) is answered from memory instead of being sent again.
+  task; a second paid attempt happens only if the uploaded file may have expired. The page blocks a second
+  submit while one is running; on the server, duplicate requests that reach the same instance (retries,
+  double clicks from other clients) wait for the first YouCam task and reuse its result, and a photo YouCam
+  rejected (no face, too dark...) is answered from memory instead of being sent again.
 - `.vercelignore` is an allow-list (app, requirements, VERSION, stock face); `.env`, `.venv`, tests, scripts
   and videos are never uploaded.
 - `YOUCAM_API_KEY` is a sensitive project env var, `YOUCAM_MOCK=0`.
