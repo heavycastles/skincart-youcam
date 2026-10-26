@@ -22,6 +22,7 @@ from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, Field
 
@@ -38,6 +39,8 @@ MIN_SIDE = 480  # YouCam SD skin analysis: short side must be at least 480 px
 MAX_SCANS = 24  # in-memory cache holds photos, so keep it bounded on long-lived instances
 
 app = FastAPI(title="SkinCart", version=VERSION)
+# Vercel's edge compresses on its own; this covers the Docker / Render deploys (the page is ~62 KB raw, ~17 KB gzipped).
+app.add_middleware(GZipMiddleware, minimum_size=1024)
 
 SECURITY_HEADERS = {"X-Content-Type-Options": "nosniff", "X-Frame-Options": "DENY",
                     "Referrer-Policy": "strict-origin-when-cross-origin"}
@@ -617,9 +620,23 @@ def version() -> dict:
             "n8n": bool(os.getenv("N8N_WEBHOOK_URL"))}
 
 
+# The page is static: let the CDN keep it (s-maxage) so first paint doesn't wait for a cold Python function.
+# Browsers still revalidate every load (max-age=0), and a redeploy purges the Vercel edge cache.
+INDEX_CACHE = "public, max-age=0, s-maxage=600, stale-while-revalidate=86400"
+# The sample portrait and the link-preview image never change between deploys.
+ASSET_CACHE = "public, max-age=86400, s-maxage=604800, stale-while-revalidate=604800"
+STATIC = Path(__file__).parent / "static"
+
+
 @app.api_route("/", methods=["GET", "HEAD"])
 def index() -> FileResponse:
-    return FileResponse(Path(__file__).parent / "static" / "index.html")
+    return FileResponse(STATIC / "index.html", headers={"Cache-Control": INDEX_CACHE})
+
+
+@app.api_route("/og.jpg", methods=["GET", "HEAD"])
+def og_image() -> FileResponse:
+    """1200x630 link preview (og:image / twitter:image): the live skin snapshot screen."""
+    return FileResponse(STATIC / "og.jpg", media_type="image/jpeg", headers={"Cache-Control": ASSET_CACHE})
 
 
 SAMPLE_FACE = Path(__file__).parent.parent / "docs" / "stock-face" / "stock-face.jpg"
@@ -630,7 +647,7 @@ def sample_face() -> FileResponse:
     """Licensed stock portrait (Unsplash, Jake Nackos) so visitors can try the flow without a selfie."""
     if not SAMPLE_FACE.exists():
         raise HTTPException(404, "sample photo not bundled")
-    return FileResponse(SAMPLE_FACE, media_type="image/jpeg")
+    return FileResponse(SAMPLE_FACE, media_type="image/jpeg", headers={"Cache-Control": ASSET_CACHE})
 
 
 @app.api_route("/catalog", methods=["GET", "HEAD"])

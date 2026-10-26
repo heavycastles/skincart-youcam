@@ -2,6 +2,14 @@
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>SkinCart — selfie to basket with YouCam AI</title>
 <meta name="description" content="Selfie to a skincare basket: YouCam AI Skin Analysis, makeup try-on and checkout.">
+<meta name="theme-color" content="#fbf7f5">
+<meta property="og:type" content="website"><meta property="og:site_name" content="SkinCart">
+<meta property="og:title" content="SkinCart — selfie to basket with YouCam AI">
+<meta property="og:description" content="12 skin concerns scored by YouCam AI, a routine from the shop's catalog, a foundation shade match and makeup try-on on your own photo.">
+<meta property="og:url" content="https://skincart-youcam.vercel.app/">
+<meta property="og:image" content="https://skincart-youcam.vercel.app/og.jpg"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="SkinCart skin snapshot: skin score ring, 12 concern tiles and a basket">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22%3E%3Crect width=%2224%22 height=%2224%22 rx=%227%22 fill=%22%23c2185b%22/%3E%3Cpath d=%22M12 4c3.5 3.5 5 6 5 8.5a5 5 0 0 1-10 0C7 10 8.5 7.5 12 4z%22 fill=%22%23fff%22/%3E%3C/svg%3E">
 <style>
 :root{--ink:#1d1a22;--muted:#6f6878;--line:#eee6ea;--bg:#fbf7f5;--card:#fff;--rose:#c2185b;--rose2:#d23767;--blush:#fde8ef;
@@ -17,8 +25,8 @@ nav{position:sticky;top:0;z-index:20;backdrop-filter:blur(10px);background:rgba(
 .navin{display:flex;align-items:center;gap:14px;height:64px}
 .logo{display:flex;align-items:center;gap:10px;font-weight:700;font-size:19px;letter-spacing:-.01em}
 .mark{width:32px;height:32px;border-radius:10px;background:linear-gradient(135deg,var(--rose2),var(--rose));display:grid;place-items:center;box-shadow:0 4px 14px rgba(194,24,91,.35)}
-.navsp{flex:1}.navlink{color:var(--muted);text-decoration:none;font-size:14px;margin-right:6px}
-.badge{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;font-weight:600;padding:6px 11px;border-radius:999px;background:#fff;border:1px solid var(--line)}
+.navsp{flex:1}.navlink{color:var(--muted);text-decoration:none;font-size:14px;margin-right:6px;padding:12px 4px}
+.badge{display:inline-flex;align-items:center;justify-content:center;min-width:158px;gap:7px;font-size:12.5px;font-weight:600;padding:6px 11px;border-radius:999px;background:#fff;border:1px solid var(--line)}
 .dot{width:8px;height:8px;border-radius:50%;background:#bbb}.live .dot{background:var(--ok);box-shadow:0 0 0 4px rgba(31,157,107,.15);animation:pulse 1.6s infinite}
 @keyframes pulse{50%{box-shadow:0 0 0 7px rgba(31,157,107,.05)}}
 .hero{display:grid;grid-template-columns:1.1fr .9fr;gap:44px;align-items:center;padding:30px 0 26px}
@@ -45,8 +53,8 @@ h1 em{font-style:italic;color:var(--rose)}
 .scan:before{content:"";position:absolute;left:0;right:0;height:120px;background:linear-gradient(180deg,transparent,rgba(232,80,127,.35),transparent);animation:sweep 1.6s ease-in-out infinite}
 .scan:after{content:"";position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.18) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.18) 1px,transparent 1px);background-size:28px 28px}
 @keyframes sweep{0%{top:-120px}100%{top:100%}}
-.chip{position:absolute;left:24px;bottom:24px;right:24px;background:rgba(20,10,18,.72);color:#fff;border-radius:14px;padding:12px 14px;font-size:13.5px;display:none;align-items:center;gap:10px;backdrop-filter:blur(6px)}
-.scanning .chip,.chip.show{display:flex}
+.chip{position:absolute;left:38px;bottom:38px;right:38px;background:rgba(20,10,18,.72);color:#fff;border-radius:14px;padding:12px 14px;font-size:13.5px;display:none;align-items:center;gap:10px;backdrop-filter:blur(6px)}
+.drop.scanning~.chip,.chip.show{display:flex}
 .spin{width:16px;height:16px;border-radius:50%;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;animation:rot .8s linear infinite;flex:none}
 @keyframes rot{to{transform:rotate(360deg)}}
 .credit{font-size:11px;color:var(--muted);text-align:right;margin:8px 4px 0}
@@ -90,7 +98,7 @@ section.res{display:none;padding:10px 0 60px}section.res.show{display:block;anim
 .cmp .after{clip-path:inset(0 0 0 50%)}.cmp .handle{position:absolute;top:0;bottom:0;left:50%;width:2px;background:#fff;box-shadow:0 0 12px rgba(0,0,0,.3)}
 .cmp .handle:after{content:"";position:absolute;top:50%;left:-15px;width:32px;height:32px;margin-top:-16px;border-radius:50%;background:#fff;box-shadow:0 4px 12px rgba(0,0,0,.25)}
 .cmp .lbl{position:absolute;top:12px;font-size:11.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#fff;background:rgba(20,10,18,.6);padding:4px 9px;border-radius:8px}
-.cmp input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:ew-resize}.cmp:has(input:focus-visible){outline:3px solid #f08aac;outline-offset:3px}
+.cmp input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:ew-resize}.cmp:has(input:focus-visible){outline:3px solid var(--rose);outline-offset:3px}
 .cmp .empty{position:absolute;inset:0;display:grid;place-items:end center;color:#fff;font-size:14px;font-weight:600;text-align:center;padding:18px;background:linear-gradient(180deg,transparent 55%,rgba(20,10,18,.55))}
 .sw{display:flex;align-items:center;gap:12px;width:100%;text-align:left;border:1px solid var(--line);background:#fff;border-radius:14px;padding:11px 12px;margin-bottom:10px;cursor:pointer;font:500 14px Inter}
 .sw i{width:30px;height:30px;border-radius:50%;flex:none;box-shadow:inset 0 0 0 3px rgba(255,255,255,.7),0 0 0 1px var(--line)}
@@ -106,7 +114,7 @@ footer{border-top:1px solid var(--line);padding:22px 0 30px;color:var(--muted);f
 .err{color:var(--hi);font-weight:600}
 #status:empty{display:none}#retryRow{margin:-8px 0 18px}#retryRow[hidden]{display:none}#status{background:#fff1f3;border:1px solid #f7c6d0;border-radius:14px;padding:12px 14px;margin:0 0 18px;font-weight:600}
 .sr{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
-:focus-visible{outline:3px solid #f08aac;outline-offset:2px}
+:focus-visible{outline:3px solid var(--rose);outline-offset:2px}
 .drop.dragover{border-color:var(--rose);background:#ffeaf1}
 .framing{cursor:grab;touch-action:none;border:0}.framing:active{cursor:grabbing}
 .drop.framing #frameImg{position:absolute;max-width:none;object-fit:fill;inset:auto;user-select:none;-webkit-user-drag:none}
@@ -139,6 +147,7 @@ footer{border-top:1px solid var(--line);padding:22px 0 30px;color:var(--muted);f
 .range{display:grid;grid-template-columns:repeat(12,1fr);gap:6px;margin:6px 0 4px}
 .range button{position:relative;aspect-ratio:1/1.5;border-radius:10px;border:1px solid rgba(0,0,0,.06);cursor:pointer;padding:0}
 .range button.match{outline:3px solid var(--rose);outline-offset:2px}.range button.nb{outline:2px dashed #d9a3b8;outline-offset:2px}
+.range button:focus-visible{outline:3px solid var(--ink);outline-offset:3px}
 .rangeLbl{display:flex;justify-content:space-between;gap:8px;font-size:11px;color:var(--muted);margin-bottom:14px}.rangeLbl .mid{text-align:center}
 .line .lr{display:flex;align-items:center;gap:6px;flex:none}.rm{border:0;background:none;color:var(--muted);font-size:18px;line-height:1;width:26px;height:26px;border-radius:8px;cursor:pointer;padding:0}.rm:hover{background:#f6eef1;color:var(--hi)}
 .shadeNote{margin:6px 0 0}
@@ -151,9 +160,11 @@ footer{border-top:1px solid var(--line);padding:22px 0 30px;color:var(--muted);f
 .formula{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}.formula div{border:1px solid var(--line);border-radius:14px;padding:11px 13px}.formula small{display:block;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--rose)}.formula b{font-weight:600}.formula p{margin:3px 0 0;font-size:12.5px;color:var(--muted)}
 .tag{display:inline-block;font-size:10.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;border-radius:6px;padding:2px 6px;margin-left:6px;background:#e6f6ef;color:var(--ok);vertical-align:middle}
 @media(max-width:960px){.simRes,.formula{grid-template-columns:1fr}}
-@media(max-width:520px){.plan{grid-template-columns:1fr}.range{gap:3px}.range button{aspect-ratio:1/2;border-radius:7px}.range button.match{outline-offset:1px}.tone{grid-template-columns:1fr}}
+@media(max-width:520px){.plan{grid-template-columns:1fr}.tone{grid-template-columns:1fr}}
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
 @media(max-width:520px){.wrap{padding:0 16px}h1{font-size:34px}.fc{min-width:0;flex:1 1 130px}.card{padding:18px}.masks{gap:8px}.navlink{display:none}}
+@media(max-width:640px){input.f{font-size:16px;min-height:48px}.add{min-height:40px;padding:8px 14px}.rm{width:40px;height:40px;font-size:20px}.btn.sm,.alts button{min-height:44px}.line{align-items:center;padding:4px 0}}
+@media(max-width:520px){.range{grid-template-columns:repeat(6,1fr);gap:8px}.range button{aspect-ratio:1/1.1}}
 @media(max-width:960px){.hero,.grid,.vto{grid-template-columns:1fr}.tiles{grid-template-columns:repeat(2,1fr)}.prods{grid-template-columns:1fr}h1{font-size:40px}.side{position:static}.summary{grid-template-columns:1fr}}
 </style></head><body>
 <nav><div class="wrap navin">
@@ -179,8 +190,8 @@ footer{border-top:1px solid var(--line);padding:22px 0 30px;color:var(--muted);f
    <div class="stage"><div class="drop" id="drop" role="button" tabindex="0" aria-label="Drop a selfie here, front-facing, good light, no filters. Press to choose a photo">
      <div class="ph"><svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#d987a4" stroke-width="1.6"><circle cx="12" cy="9" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg><div><b>Drop a selfie here</b><br><small>front-facing, good light, no filters</small></div></div>
      <img id="preview" alt="Your photo" hidden><img id="frameImg" alt="Photo being framed" hidden draggable="false"><div class="shade" id="shade" hidden></div><div class="guide" id="guide" hidden></div><div class="ghint" id="ghint" hidden>Zoom and drag so your face fills the oval</div><div class="scan"></div>
-     <div class="chip" id="chip" aria-live="polite"><span class="spin"></span><span id="chipTxt">Analyzing…</span></div>
    </div>
+   <div class="chip" id="chip" aria-live="polite"><span class="spin"></span><span id="chipTxt">Analyzing…</span></div>
    <div class="frametools" id="frametools" hidden><label>Zoom <input type="range" id="zoom" min="100" max="400" value="100" aria-label="Zoom photo"></label>
     <button class="btn sec" id="frameCancel" type="button">Cancel</button><button class="btn pri" id="frameGo" type="button">Analyze photo</button></div></div>
    <div class="credit" id="credit" hidden>Sample photo: Jake Nackos / Unsplash</div>
@@ -313,7 +324,7 @@ function startFraming(im,zoom=1){const d=$('drop'),fi=$('frameImg');framing={im,
  d.classList.add('has','framing');d.classList.remove('scanning');document.querySelector('.ph').style.display='none';$('preview').hidden=true;$('chip').classList.remove('show');
  fi.src=im.src;fi.hidden=false;$('guide').hidden=$('shade').hidden=$('ghint').hidden=false;$('frametools').hidden=false;$('zoom').value=Math.round(zoom*100);
  const g=geom();framing.x=(g.W-g.w)/2;framing.y=(g.H-g.h)/2;
- d.setAttribute('aria-label','Framing your photo: drag to move, use the zoom slider, then press Analyze photo');layoutFrame();step(1);$('frameGo').focus({preventScroll:true});$('drop').scrollIntoView({behavior:SB(),block:'center'})}
+ d.setAttribute('aria-label','Zoom and drag so your face fills the oval. Arrow keys move the photo, plus and minus zoom, Enter analyzes it.');layoutFrame();step(1);$('frameGo').focus({preventScroll:true});$('drop').scrollIntoView({behavior:SB(),block:'center'})}
 // Zoom is capped so the framed area keeps >= MIN_CROP real pixels; it is then scaled to YouCam's 480 px minimum if needed.
 const MIN_CROP=320;
 function geom(){const d=$('drop'),W=d.clientWidth,H=d.clientHeight,im=framing.im,base=Math.max(W/im.naturalWidth,H/im.naturalHeight);
@@ -365,18 +376,20 @@ async function run(b64,type,reframe){setBusy(true);say('');const prevSrc=imgSrc;
  clearInterval(t);scan=res;imgSrc=b64;scan.content_type=type;calls+=scan.api_calls||0;units+=scan.units||0;shadeData=null;simShownFor=null;$('drop').classList.remove('scanning');setBusy(false);
  const c=$('chip');c.classList.add('show');c.innerHTML=`<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#7be3b5" stroke-width="3" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg>`+esc(scan.cached?'Loaded from cache · 0 units used':`Analyzed in ${(scan.elapsed_ms/1000).toFixed(1)} s · ${scan.mode==='live'?'live YouCam API':'mock mode'}`);
  tryTok++;trying=null;shown=null;autoLip=null;render();step(3);hood();announce(`Skin analysis ready: skin score ${scan.skin_score}, ${scan.basket.length}-step routine in your basket.`);setTimeout(()=>{$('res').scrollIntoView({behavior:SB()});$('resHead').focus({preventScroll:true})},400)}
+// A YouCam overlay link that fails to load is dropped; if none are left, so is the "Where YouCam sees it" heading.
+function maskFailed(img){img.parentNode.remove();if(!$('masks').children.length)$('maskWrap').hidden=true}
 function render(){const live=scan.mode==='live';$('res').classList.add('show');$('ok').classList.remove('show');$('formErr').textContent='';
  $('srcPill').textContent=live?'Live · YouCam Skin Analysis':'Mock data';$('srcPill').classList.toggle('live',live);
  $('vtoPill').textContent=live?'Live · YouCam Makeup VTO':'Mock preview';$('vtoPill').classList.toggle('live',live);
  $('snapSub').textContent=`${scan.scores.length} concerns scored by YouCam AI · higher is healthier`;
- const sc=scan.skin_score||0;let n=0;$('score').textContent='0';const iv=setInterval(()=>{n=Math.min(sc,n+2);$('score').textContent=n;if(n>=sc)clearInterval(iv)},18);
+ const sc=scan.skin_score||0;let n=calm.matches?sc:0;$('score').textContent=n;const iv=setInterval(()=>{n=Math.min(sc,n+2);$('score').textContent=n;if(n>=sc)clearInterval(iv)},18);
  requestAnimationFrame(()=>$('arc').style.strokeDashoffset=465*(1-sc/100));
  $('focus').innerHTML=scan.concerns.length?scan.concerns.map(c=>`<div class="fc"><small class="sev-${esc(c.severity)}">${esc(c.severity)}</small><b>${esc(c.label)}</b> · ${esc(c.ui_score)}</div>`).join(''):'<div class="fc"><small class="sev-mild">great</small><b>No concerns</b></div>';
  const sorted=[...scan.scores].sort((a,b)=>a.ui_score-b.ui_score);
  $('tiles').innerHTML=sorted.map(s=>`<div class="tile"><div class="t"><span>${esc(s.label)}</span><b>${esc(s.ui_score)}</b></div><div class="bar" role="img" aria-label="${esc(s.label)} ${esc(s.ui_score)} of 100"><i data-w="${esc(s.ui_score)}" style="background:${sevColor(s.ui_score)}"></i></div></div>`).join('');
  setTimeout(()=>document.querySelectorAll('.bar i').forEach(i=>i.style.width=i.dataset.w+'%'),60);
  const masks=scan.concerns.map(c=>({c,s:scan.scores.find(x=>x.type===c.type)})).filter(m=>m.s&&m.s.mask_urls&&m.s.mask_urls.length).slice(0,3);
- $('maskWrap').hidden=!masks.length;$('masks').innerHTML=masks.map(m=>`<div class="mask"><img src="${esc(m.s.mask_urls[0])}" alt="YouCam overlay for ${esc(m.c.label)}" onerror="this.parentNode.remove()"><span>${esc(m.c.label)}</span></div>`).join('');
+ $('maskWrap').hidden=!masks.length;$('masks').innerHTML=masks.map(m=>`<div class="mask"><img src="${esc(m.s.mask_urls[0])}" alt="YouCam overlay for ${esc(m.c.label)}" loading="lazy" decoding="async" onerror="maskFailed(this)"><span>${esc(m.c.label)}</span></div>`).join('');
  cart=new Set(scan.basket.map(p=>p.sku));
  $('routinePill').textContent=`${scan.basket.length} steps`;
  $('prods').innerHTML=scan.basket.map(p=>{const [a,b]=COLORS[p.category]||COLORS.makeup;return `<div class="prod in" id="p-${esc(p.sku)}"><div class="pic" style="background:linear-gradient(160deg,${a},${b})" aria-hidden="true"></div><div style="flex:1"><div class="cat">${esc(p.category)}</div><h3>${esc(p.name)}</h3><p>${esc(p.reason)}</p><div class="prow"><span class="price">$${p.price.toFixed(2)}</span><button class="add" type="button" aria-pressed="true" aria-label="${esc(p.name)} in basket" onclick="toggle('${esc(p.sku)}')">In basket</button></div></div></div>`}).join('');

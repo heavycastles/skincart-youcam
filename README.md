@@ -81,7 +81,7 @@ portrait behind the "Use sample photo" button.
 ```bash
 cp .env.example .env               # optional: YOUCAM_API_KEY, TELEGRAM_BOT_TOKEN
 python -m venv .venv && .venv/bin/pip install -r requirements-dev.txt
-.venv/bin/pytest -q                # 101 tests (offline mock)
+.venv/bin/pytest -q                # 111 tests (offline mock)
 .venv/bin/python serve.py          # http://localhost:8080  (mock mode if no key)
 docker compose up --build          # app :8080 + n8n :5678 (import n8n/skincart-orders.json)
 ```
