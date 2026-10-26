@@ -612,9 +612,15 @@ def healthz() -> dict:
     return {"status": "ok", "youcam": "mock" if youcam.mock else "live"}
 
 
+def _commit() -> str:
+    """Short commit of the running build: GIT_COMMIT (set at deploy time), Vercel's git SHA, else "unknown"."""
+    sha = (os.getenv("GIT_COMMIT") or os.getenv("VERCEL_GIT_COMMIT_SHA") or "").strip()
+    return sha[:7] if re.fullmatch(r"[0-9a-fA-F]{7,40}", sha) else "unknown"
+
+
 @app.api_route("/version", methods=["GET", "HEAD"])
 def version() -> dict:
-    return {"version": VERSION, "commit": os.getenv("GIT_COMMIT", "unknown"),
+    return {"version": VERSION, "commit": _commit(),
             "youcam": {"mode": "mock" if youcam.mock else "live", "base_url": youcam.base_url,
                        "api_calls": youcam.calls}, "telegram": bot.enabled,
             "n8n": bool(os.getenv("N8N_WEBHOOK_URL"))}

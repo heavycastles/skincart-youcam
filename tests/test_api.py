@@ -16,6 +16,19 @@ def test_health_ui_version():
     assert len(client.get("/catalog").json()["products"]) >= 10
 
 
+def test_version_reports_short_commit(monkeypatch):
+    monkeypatch.delenv("GIT_COMMIT", raising=False)
+    monkeypatch.delenv("VERCEL_GIT_COMMIT_SHA", raising=False)
+    assert client.get("/version").json()["commit"] == "unknown"
+    monkeypatch.setenv("VERCEL_GIT_COMMIT_SHA", "0123456789abcdef0123456789abcdef01234567")
+    assert client.get("/version").json()["commit"] == "0123456"
+    monkeypatch.setenv("GIT_COMMIT", "abc1234")  # set at deploy time, wins over Vercel's value
+    assert client.get("/version").json()["commit"] == "abc1234"
+    monkeypatch.setenv("GIT_COMMIT", "<script>")  # never echo arbitrary text
+    monkeypatch.delenv("VERCEL_GIT_COMMIT_SHA")
+    assert client.get("/version").json()["commit"] == "unknown"
+
+
 def test_selfie_to_order_end_to_end():
     r = client.post("/analyze", json={"image_base64": "data:image/jpeg;base64," + IMG})
     assert r.status_code == 200
