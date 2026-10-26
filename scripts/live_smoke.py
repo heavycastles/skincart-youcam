@@ -1,6 +1,6 @@
 """One real YouCam call pair (skin analysis + lip VTO) against a selfie. Costs units - run once with a key.
 
-    YOUCAM_API_KEY=... python scripts/live_smoke.py path/to/selfie.jpg
+    YOUCAM_API_KEY=... PYTHONPATH=. .venv/bin/python scripts/live_smoke.py path/to/selfie.jpg
 """
 
 import json

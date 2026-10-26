@@ -83,7 +83,7 @@ runs in mock mode.
 
 ```bash
 cp .env.example .env               # optional: YOUCAM_API_KEY, TELEGRAM_BOT_TOKEN
-python -m venv .venv && .venv/bin/pip install -r requirements-dev.txt
+python3 -m venv .venv && .venv/bin/pip install -r requirements-dev.txt
 .venv/bin/pytest -q                # 112 tests (offline mock)
 .venv/bin/python serve.py          # http://localhost:8080  (mock mode if no key)
 docker compose up --build          # app :8080 + n8n :5678 (import n8n/skincart-orders.json)
@@ -93,11 +93,11 @@ Two of the tests drive the page in headless Chrome (`tests/e2e/ui_flow.js`); the
 (`npm i -g puppeteer-core`) and Chrome are installed and are skipped otherwise.
 
 Live mode: put `YOUCAM_API_KEY` (from https://yce.makeupar.com/api-console/en/api-keys/) into `.env`.
-Smoke-test one real call: `YOUCAM_API_KEY=... PYTHONPATH=. python scripts/live_smoke.py selfie.jpg`
+Smoke-test one real call: `YOUCAM_API_KEY=... PYTHONPATH=. .venv/bin/python scripts/live_smoke.py selfie.jpg`
 (use only your own or consented / licensed photos).
 
 Telegram: set `TELEGRAM_BOT_TOKEN` and either register a webhook to `https://<host>/telegram/webhook`
-(optionally with `TELEGRAM_WEBHOOK_SECRET`) or run long polling: `python -m app.telegram`.
+(optionally with `TELEGRAM_WEBHOOK_SECRET`) or run long polling: `.venv/bin/python -m app.telegram`.
 
 ## Environment variables
 
