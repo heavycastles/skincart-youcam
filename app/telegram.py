@@ -15,6 +15,15 @@ from fastapi import HTTPException
 API = "https://api.telegram.org"
 
 
+MAX_SIDE = 1919  # same limit as app.main.MAX_SIDE: YouCam Makeup VTO takes a long side below 1920 px
+
+
+def pick_photo_size(photos: list[dict]) -> dict:
+    """Telegram sends each photo in several sizes (smallest first); take the largest one YouCam accepts."""
+    fitting = [p for p in photos if max(p.get("width") or 0, p.get("height") or 0) <= MAX_SIDE]
+    return fitting[-1] if fitting else photos[0]
+
+
 class TelegramBot:
     def __init__(self, analyze, tryon, order, order_model) -> None:
         self.token = os.getenv("TELEGRAM_BOT_TOKEN", "")
@@ -70,7 +79,8 @@ class TelegramBot:
         if chat_id is None:
             return {"ok": True, "sent": sent}
         if photos := msg.get("photo"):
-            image = self._download_photo(photos[-1]["file_id"]) if self.token else photos[-1]["file_id"].encode()
+            photo = pick_photo_size(photos)
+            image = self._download_photo(photo["file_id"]) if self.token else photo["file_id"].encode()
             try:
                 res = self.analyze(image, None, "image/jpeg")
             except HTTPException as exc:  # e.g. face too small: tell the customer how to retake it

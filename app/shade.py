@@ -17,6 +17,10 @@ COOL_BELOW, WARM_FROM = 55.0, 62.0  # hue angle h_ab in degrees
 UNDERTONE_PENALTY = 3.0  # delta-E points added when a shade's undertone differs from the customer's
 
 
+OUT_OF_RANGE_DE = 8.0  # beyond this delta-E the end-of-range shade is a visible mismatch
+OUT_OF_RANGE_L = 3.0  # ...and only when the skin is actually lighter / deeper than that shade (not just a hue miss)
+
+
 def hex_to_rgb(value: str) -> tuple[int, int, int]:
     m = _HEX.fullmatch(str(value or "").strip())
     if not m:
@@ -106,11 +110,19 @@ def match(tones: dict, scores: list[dict] | None = None) -> dict:
     i = shades.index(best)
     neighbors = [shades[j] for j in (i - 1, i + 1) if 0 <= j < len(shades)]
     lip = tones.get("lip_color")
+    out_of_range = None  # skin clearly beyond the deepest / lightest shade we stock: say so instead of a "match"
+    if delta_e(skin, best["shade"]["hex"]) > OUT_OF_RANGE_DE:
+        skin_l = hex_to_lab(skin)[0]
+        if skin_l < hex_to_lab(shades[-1]["shade"]["hex"])[0] - OUT_OF_RANGE_L:
+            out_of_range = "deeper"
+        elif skin_l > hex_to_lab(shades[0]["shade"]["hex"])[0] + OUT_OF_RANGE_L:
+            out_of_range = "lighter"
     return {
         "skin_hex": skin.lower(), "lip_hex": (lip or "").lower() or None,
         "eye_color": tones.get("eye_color_name"),
         "undertone": tone, "hue_angle": round(hue_angle(skin), 1), "depth": depth(skin),
-        "match": _shade_card(best, skin), "neighbors": [_shade_card(p, skin) for p in neighbors],
+        "match": _shade_card(best, skin), "out_of_range": out_of_range,
+        "neighbors": [_shade_card(p, skin) for p in neighbors],
         "range": [_shade_card(p, skin) | {"is_match": p is best} for p in shades],
         "formula": finish_and_coverage(scores),
         "lips": rank_lips(tone, lip),

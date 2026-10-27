@@ -117,6 +117,7 @@ footer{border-top:1px solid var(--line);padding:22px 0 30px;color:var(--muted);f
 :focus-visible{outline:3px solid var(--rose);outline-offset:2px}
 .drop.dragover{border-color:var(--rose);background:#ffeaf1}
 .framing{cursor:grab;touch-action:none;border:0}.framing:active{cursor:grabbing}
+.drop.framing{background:#fff}
 .drop.framing #frameImg{position:absolute;max-width:none;object-fit:fill;inset:auto;user-select:none;-webkit-user-drag:none}
 .shade{position:absolute;inset:0;pointer-events:none}
 .guide{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);border-radius:50%;border:2px dashed rgba(255,255,255,.9);pointer-events:none}
@@ -192,7 +193,7 @@ footer{border-top:1px solid var(--line);padding:22px 0 30px;color:var(--muted);f
      <img id="preview" alt="Your photo" hidden><img id="frameImg" alt="Photo being framed" hidden draggable="false"><div class="shade" id="shade" hidden></div><div class="guide" id="guide" hidden></div><div class="ghint" id="ghint" hidden>Zoom and drag so your face fills the oval</div><div class="scan"></div>
    </div>
    <div class="chip" id="chip" aria-live="polite"><span class="spin"></span><span id="chipTxt">Analyzing…</span></div>
-   <div class="frametools" id="frametools" hidden><label>Zoom <input type="range" id="zoom" min="100" max="400" value="100" aria-label="Zoom photo"></label>
+   <div class="frametools" id="frametools" hidden><label>Zoom <input type="range" id="zoom" min="60" max="400" value="100" aria-label="Zoom photo"></label>
     <button class="btn sec" id="frameCancel" type="button">Cancel</button><button class="btn pri" id="frameGo" type="button">Analyze photo</button></div></div>
    <div class="credit" id="credit" hidden>Sample photo: Jake Nackos / Unsplash</div>
   </div>
@@ -280,7 +281,8 @@ const vtoCache=new Map(),simCache=new Map(); // per scan: re-showing a render co
 const COLORS={cleanser:['#d9ecf7','#9cc9e6'],serum:['#ffe7c7','#f3b874'],treatment:['#e6dcfb','#a58be6'],eye:['#dff3ea','#87cfae'],moisturizer:['#fde3ea','#ef9ab4'],spf:['#fff4c4','#efcf55'],makeup:['#f9d9df','#c94f6d']};
 const sevColor=v=>v<50?'var(--hi)':v<70?'var(--mid)':v<80?'#d987a4':'var(--ok)';
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const MIN_SIDE=480,MAX_FILE=25e6,MAX_B64=3e6; // Vercel rejects request bodies over 4.5 MB: keep the JSON well below
+const MIN_SIDE=480,MAX_SEND=1600,MAX_FILE=25e6,MAX_B64=3e6; // Vercel rejects request bodies over 4.5 MB: keep the JSON well below
+// MAX_SEND: YouCam Makeup VTO only takes photos below 1920 px on the long side, and the one upload serves every task
 const calm=matchMedia('(prefers-reduced-motion: reduce)');const SB=()=>calm.matches?'auto':'smooth';
 const announce=m=>{const a=$('announce');a.textContent='';setTimeout(()=>a.textContent=m,60)};
 fetch('/version').then(r=>r.json()).then(v=>{const live=v.youcam.mode==='live';$('mode').classList.toggle('live',live);$('modeTxt').textContent='YouCam API · '+(live?'LIVE':'mock');
@@ -326,14 +328,15 @@ function startFraming(im,zoom=1){const d=$('drop'),fi=$('frameImg');framing={im,
  const g=geom();framing.x=(g.W-g.w)/2;framing.y=(g.H-g.h)/2;
  d.setAttribute('aria-label','Zoom and drag so your face fills the oval. Arrow keys move the photo, plus and minus zoom, Enter analyzes it.');layoutFrame();step(1);$('frameGo').focus({preventScroll:true});$('drop').scrollIntoView({behavior:SB(),block:'center'})}
 // Zoom is capped so the framed area keeps >= MIN_CROP real pixels; it is then scaled to YouCam's 480 px minimum if needed.
-const MIN_CROP=320;
+// Zooming out below 1x (face too close / cut off) centers the photo on a white margin instead of leaving an empty band.
+const MIN_CROP=320,ZMIN=0.6;
 function geom(){const d=$('drop'),W=d.clientWidth,H=d.clientHeight,im=framing.im,base=Math.max(W/im.naturalWidth,H/im.naturalHeight);
- const zmax=Math.max(1,Math.min(4,Math.min(W,H)/(base*MIN_CROP)));framing.zoom=Math.min(framing.zoom,zmax);$('zoom').max=Math.round(zmax*100);const s=base*framing.zoom;
- const w=im.naturalWidth*s,h=im.naturalHeight*s;framing.x=Math.min(0,Math.max(W-w,framing.x));framing.y=Math.min(0,Math.max(H-h,framing.y));return{W,H,s,w,h}}
+ const zmax=Math.max(1,Math.min(4,Math.min(W,H)/(base*MIN_CROP)));framing.zoom=Math.max(ZMIN,Math.min(framing.zoom,zmax));$('zoom').max=Math.round(zmax*100);const s=base*framing.zoom;
+ const w=im.naturalWidth*s,h=im.naturalHeight*s;framing.x=w<W?(W-w)/2:Math.min(0,Math.max(W-w,framing.x));framing.y=h<H?(H-h)/2:Math.min(0,Math.max(H-h,framing.y));return{W,H,s,w,h}}
 function layoutFrame(){if(!framing)return;const g=geom(),fi=$('frameImg');Object.assign(fi.style,{left:framing.x+'px',top:framing.y+'px',width:g.w+'px',height:g.h+'px'});
  const gw=Math.round(g.W*.7),gh=Math.round(Math.min(g.H*.84,gw/.76));Object.assign($('guide').style,{width:gw+'px',height:gh+'px'});
  $('shade').style.background=`radial-gradient(ellipse ${gw/2}px ${gh/2}px at 50% 50%,transparent 98%,rgba(20,10,18,.45) 100%)`}
-function zoomTo(z){if(!framing)return;const g0=geom(),cx=(g0.W/2-framing.x)/g0.s,cy=(g0.H/2-framing.y)/g0.s;framing.zoom=Math.max(1,z);
+function zoomTo(z){if(!framing)return;const g0=geom(),cx=(g0.W/2-framing.x)/g0.s,cy=(g0.H/2-framing.y)/g0.s;framing.zoom=Math.max(ZMIN,z);
  const g=geom();framing.x=g0.W/2-cx*g.s;framing.y=g0.H/2-cy*g.s;$('zoom').value=Math.round(framing.zoom*100);layoutFrame()}
 $('zoom').oninput=e=>zoomTo(e.target.value/100);
 let drag=null;
@@ -349,10 +352,10 @@ $('frameCancel').onclick=e=>{e.stopPropagation();endFraming();if(!imgSrc){$('dro
 $('frameGo').onclick=e=>{e.stopPropagation();if(!framing||busy)return;const g=geom(),im=framing.im;
  const sx=-framing.x/g.s,sy=-framing.y/g.s,sw=g.W/g.s,sh=g.H/g.s;
  if(Math.min(sw,sh)<MIN_CROP-1)return say('Zoomed in too far for this photo. Zoom out a little and try again.');
- const k=Math.min(2048/Math.max(sw,sh),Math.max(1,MIN_SIDE/Math.min(sw,sh))),c=document.createElement('canvas');c.width=Math.round(sw*k);c.height=Math.round(sh*k);
+ const k=Math.min(MAX_SEND/Math.max(sw,sh),Math.max(1,MIN_SIDE/Math.min(sw,sh))),c=document.createElement('canvas');c.width=Math.round(sw*k);c.height=Math.round(sh*k);
  const ctx=c.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,c.width,c.height);ctx.drawImage(im,sx,sy,sw,sh,0,0,c.width,c.height);
  const last={im,zoom:framing.zoom};endFraming();run(encodeJpeg(c),'image/jpeg',last)};
-function encodeJpeg(c){let q=0.9,u=c.toDataURL('image/jpeg',q); // grainy 2048 px photos can exceed the upload limit
+function encodeJpeg(c){let q=0.9,u=c.toDataURL('image/jpeg',q); // grainy 1600 px photos can exceed the upload limit
  while(u.length>MAX_B64){if(q>0.6)q-=0.1;else{const k=Math.max(0.7,MIN_SIDE/Math.min(c.width,c.height));if(k>=1)break;
   const d=document.createElement('canvas');d.width=Math.round(c.width*k);d.height=Math.round(c.height*k);d.getContext('2d').drawImage(c,0,0,d.width,d.height);c=d}
   u=c.toDataURL('image/jpeg',q)}
@@ -449,7 +452,7 @@ $('shadeBtn').onclick=async()=>{if(!scan||shadeBusy)return;shadeBusy=true;$('sha
  const sid=scan.scan_id;
  try{const r=await post('/shade',{scan_id:sid,scores:scan.scores.map(s=>({type:s.type,ui_score:s.ui_score})),file_id:scan.file_id,image_base64:imgSrc,content_type:scan.content_type});
   if(!scan||scan.scan_id!==sid)return; // a newer photo was analyzed meanwhile
-  calls+=r.api_calls||0;units+=r.units||0;shadeData=r;drawShade();drawShades();hood();announce(`Your foundation match: ${r.match.shade}, ${r.match.undertone} undertone.`)}
+  calls+=r.api_calls||0;units+=r.units||0;shadeData=r;drawShade();drawShades();hood();announce(r.out_of_range?`Your skin is ${r.out_of_range} than our range; the closest shade is ${r.match.shade}.`:`Your foundation match: ${r.match.shade}, ${r.match.undertone} undertone.`)}
  catch(e){if(scan&&scan.scan_id===sid)$('shadeErr').textContent='Shade match failed: '+e.message}
  finally{shadeBusy=false;btn.disabled=false;btn.textContent='Find my shade'}};
 function drawShade(){const r=shadeData,m=r.match;$('shadeIntro').hidden=true;$('shadeRes').hidden=false;
@@ -458,7 +461,7 @@ function drawShade(){const r=shadeData,m=r.match;$('shadeIntro').hidden=true;$('
  const nb=new Set(r.neighbors.map(n=>n.sku));
  $('range').innerHTML=r.range.map(x=>`<button type="button" class="${x.is_match?'match':nb.has(x.sku)?'nb':''}" style="background:${esc(x.hex)}" title="${esc(x.shade)} · ${esc(x.undertone)} · ΔE ${x.delta_e}" aria-label="${esc(x.shade)}, ${esc(x.undertone)} undertone${x.is_match?', your match':''}" onclick="tryOn('${esc(x.sku)}',true)"></button>`).join('');
  const inCart=cart.has(m.sku);
- $('matchCard').innerHTML=`<i style="background:${esc(m.hex)}" aria-hidden="true"></i><div class="mc"><div class="cat">Your match</div><h3>${esc(m.shade)} <span style="font-weight:500;color:var(--muted)">· ${esc(m.undertone)}</span></h3><p>${esc(closeness(m.delta_e))} (ΔE ${m.delta_e}) · Skin Tint Foundation · $${m.price.toFixed(2)}</p></div><div class="acts"><button class="btn pri sm" type="button" onclick="tryOn('${esc(m.sku)}',true)">Try it on my photo</button><button class="btn sec sm" type="button" id="matchAdd" onclick="addShade('${esc(m.sku)}')">${inCart?'In basket ✓':'Add to basket'}</button></div>`;
+ $('matchCard').innerHTML=`<i style="background:${esc(m.hex)}" aria-hidden="true"></i><div class="mc"><div class="cat">${r.out_of_range?'Closest we stock':'Your match'}</div><h3>${esc(m.shade)} <span style="font-weight:500;color:var(--muted)">· ${esc(m.undertone)}</span></h3><p>${r.out_of_range?`Your skin is ${r.out_of_range==='deeper'?'deeper':'lighter'} than our ${r.out_of_range==='deeper'?'deepest':'lightest'} shade, so this won't be an exact match`:esc(closeness(m.delta_e))} (ΔE ${m.delta_e}) · Skin Tint Foundation · $${m.price.toFixed(2)}</p></div><div class="acts"><button class="btn pri sm" type="button" onclick="tryOn('${esc(m.sku)}',true)">Try it on my photo</button><button class="btn sec sm" type="button" id="matchAdd" onclick="addShade('${esc(m.sku)}')">${inCart?'In basket ✓':'Add to basket'}</button></div>`;
  const pos=n=>r.range.findIndex(x=>x.sku===n.sku)<r.range.findIndex(x=>x.sku===m.sku)?'lighter':'deeper';
  $('alts').innerHTML='<span class="meta" style="margin:0;align-self:center">Between shades? Try:</span>'+r.neighbors.map(n=>`<button type="button" onclick="tryOn('${esc(n.sku)}',true)"><i style="background:${esc(n.hex)}"></i>${esc(n.shade)} · ${pos(n)}</button>`).join('');
  const warmer=m.undertone!==r.undertone&&r.neighbors.find(n=>n.undertone===r.undertone);

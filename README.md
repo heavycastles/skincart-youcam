@@ -84,7 +84,7 @@ runs in mock mode.
 ```bash
 cp .env.example .env               # optional: YOUCAM_API_KEY, TELEGRAM_BOT_TOKEN
 python3 -m venv .venv && .venv/bin/pip install -r requirements-dev.txt
-.venv/bin/pytest -q                # 112 tests (offline mock)
+.venv/bin/pytest -q                # 134 tests (offline mock)
 .venv/bin/python serve.py          # http://localhost:8080  (mock mode if no key)
 docker compose up --build          # app :8080 + n8n :5678 (import n8n/skincart-orders.json)
 ```
@@ -181,8 +181,9 @@ Hosted on Vercel (Python runtime, FastAPI preset): https://skincart-youcam.verce
 - Customer contacts are private: `/leads` is not exposed on the public demo (no `ADMIN_TOKEN` set → 404),
   and `POST /orders` returns only a receipt for that order, never a stored lead's name/phone/email.
 - Serverless instances don't share memory, so the browser re-sends the photo / `file_id` (and the skin scores)
-  with `/tryon`, `/simulate` and `/shade`, and the skin profile with `/orders`; no second skin analysis is needed. Large phone photos are scaled to 2048 px
-  in the browser (and re-compressed if still over ~2.2 MB) to stay under Vercel's 4.5 MB request limit.
+  with `/tryon`, `/simulate` and `/shade`, and the skin profile with `/orders`; no second skin analysis is needed. Large phone photos are scaled to 1600 px
+  in the browser (YouCam Makeup VTO needs < 1920 px; the API rejects larger uploads before any units are spent) and
+  re-compressed if still over ~2.2 MB, to stay under Vercel's 4.5 MB request limit.
 
 ```bash
 vercel deploy --prod -e GIT_COMMIT=$(git rev-parse --short HEAD)   # /version then reports the commit

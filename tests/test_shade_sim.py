@@ -3,6 +3,7 @@
 import base64
 import json
 import re
+import struct
 from pathlib import Path
 
 import pytest
@@ -15,7 +16,13 @@ from app.main import app
 from tests.test_youcam import FakeHTTP
 
 client = TestClient(app)
-IMG = base64.b64encode(b"\xff\xd8 shade sim selfie").decode()
+def jpeg(tag: bytes, w: int = 600, h: int = 800) -> bytes:
+    """Smallest structurally complete JPEG: SOI, SOF0 (size), SOS, payload, EOI."""
+    sof = b"\xff\xc0\x00\x11\x08" + struct.pack(">HH", h, w) + b"\x03" + b"\x01\x11\x00" * 3
+    return b"\xff\xd8" + sof + b"\xff\xda\x00\x02" + tag + b"\xff\xd9"
+
+
+IMG = base64.b64encode(jpeg(b"shade sim selfie")).decode()
 # Real Skin Analysis scores of the licensed stock face (docs/live-proof-response.json)
 LIVE = [{"type": c["type"], "ui_score": c["ui_score"]}
         for c in json.loads(Path("docs/live-proof-response.json").read_text())["skin_concerns"]

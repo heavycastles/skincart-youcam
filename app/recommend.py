@@ -22,6 +22,7 @@ LABELS = {
     "eye_bag": "puffy eyes",
     "firmness": "loss of firmness",
 }
+MAX_BASKET = 5  # skincare items incl. SPF; a sixth step is more than most people keep up with
 CONCERN_THRESHOLD = 80  # ui_score below this = worth caring for (<50 high, <70 medium, <80 mild / maintenance)
 
 
@@ -71,6 +72,7 @@ def recommend(scores: list[SkinConcern], limit: int = 4) -> list[dict]:
             seen.add(r["category"])
         if len(basket) == limit:
             break
+    _cover_focus(scores, basket, ranked)
     if not any(r["category"] == "spf" for r in basket):
         spf = next(p for p in CATALOG if p["category"] == "spf")
         basket.append(
@@ -81,6 +83,37 @@ def recommend(scores: list[SkinConcern], limit: int = 4) -> list[dict]:
             }
         )
     return basket
+
+
+def _cover_focus(scores: list[SkinConcern], basket: list[dict], ranked: list[dict]) -> None:
+    """Every focus area shown to the customer gets at least one product: strong all-rounders can crowd out the only
+    product for, say, puffy eyes. The best product for an uncovered focus area joins the basket (up to MAX_BASKET
+    items with SPF), or takes the place of a pick that isn't the only cover of another focus area (one per step)."""
+    targets = {p["sku"]: set(p["targets"]) for p in CATALOG}
+    focus_areas = [c["type"] for c in concerns(scores)]
+
+    def sole_cover(item: dict) -> bool:
+        return item["category"] == "spf" or any(
+            t in targets[item["sku"]] and not any(t in targets[b["sku"]] for b in basket if b is not item)
+            for t in focus_areas)
+
+    for focus in focus_areas:
+        if any(focus in targets[b["sku"]] for b in basket):
+            continue
+        for pick in (r for r in ranked if focus in targets[r["sku"]]):
+            same_step = next((b for b in basket if b["category"] == pick["category"]), None)
+            if same_step is not None:
+                if sole_cover(same_step):
+                    continue
+                basket[basket.index(same_step)] = pick
+            elif len(basket) + (0 if any(b["category"] == "spf" for b in basket) else 1) < MAX_BASKET:
+                basket.append(pick)
+            else:
+                swappable = [b for b in basket if not sole_cover(b)]
+                if not swappable:
+                    continue
+                basket[basket.index(min(swappable, key=lambda b: b["match"]))] = pick
+            break
 
 
 def vto_products() -> list[dict]:

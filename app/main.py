@@ -36,6 +36,10 @@ VERSION = (Path(__file__).parent.parent / "VERSION").read_text().strip() if (
     Path(__file__).parent.parent / "VERSION").exists() else "dev"
 MAX_IMAGE = 10 * 1024 * 1024
 MIN_SIDE = 480  # YouCam SD skin analysis: short side must be at least 480 px
+# YouCam SD skin analysis takes a long side up to 1920 px, Makeup VTO only below 1920 px: one upload serves every
+# task, so the photo must fit the strictest limit (the web page scales crops to 1600 px before sending).
+MAX_SIDE = 1919
+DAMAGED = "This photo looks damaged or only partly uploaded. Please save it again as a JPG or PNG and retry."
 MAX_SCANS = 24  # in-memory cache holds photos, so keep it bounded on long-lived instances
 
 app = FastAPI(title="SkinCart", version=VERSION)
@@ -119,12 +123,13 @@ FRIENDLY_ERRORS: dict[str, tuple[int, str]] = {
     "error_pose": (422, "Please look straight at the camera - the face is turned too far for skin analysis."),
     "error_face_parsing": (422, "We couldn't read the face clearly. Try a sharper, front-facing selfie without "
                                 "hands, hair or glasses covering it."),
-    "error_src_face_out_of_bound": (422, "Part of your face is cut off. Center your face with a little space "
-                                         "around it."),
+    "error_src_face_out_of_bound": (422, "Your face is too close or cut off at the edge. Zoom out a little so "
+                                         "the whole face fits with some space around it."),
     "error_lighting_dark": (422, "The photo is too dark. Face a window or a lamp and try again."),
     "error_below_min_image_size": (422, f"This photo is too small. Use one at least {MIN_SIDE} px on the short "
                                         "side."),
-    "error_exceed_max_image_size": (413, "This photo is too large. Please use one under 10 MB."),
+    "error_exceed_max_image_size": (413, "This photo's resolution is too high for YouCam. Use one under "
+                                         f"{MAX_SIDE + 1} px on the long side."),
     "exceed_max_filesize": (413, "This photo is too large. Please use one under 10 MB."),
     "error_decode_image": (415, "YouCam couldn't read this image. Please use a JPG or PNG photo."),
     "error_nsfw_content_detected": (422, "This photo can't be processed. Please use a regular selfie."),
@@ -190,10 +195,25 @@ def check_image(image: bytes) -> str:
                                  "JPG or PNG photo.")
     if fmt is None:
         raise HTTPException(415, "This file isn't a photo we can read. Please use a JPG or PNG selfie.")
-    if w and h and min(w, h) < MIN_SIDE:
+    if not w or not h:
+        raise HTTPException(415, DAMAGED)
+    if min(w, h) < MIN_SIDE:
         raise HTTPException(422, f"This photo is too small ({w}x{h} px). Use one at least {MIN_SIDE} px on the "
                                  "short side.")
+    if max(w, h) > MAX_SIDE:
+        raise HTTPException(422, f"This photo is too large ({w}x{h} px). YouCam needs it under {MAX_SIDE + 1} px on "
+                                 "the long side: resize it, or upload it on the web page, which does that for you.")
+    if not _complete(image, fmt):
+        raise HTTPException(415, DAMAGED)
     return "image/png" if fmt == "png" else "image/jpeg"
+
+
+def _complete(data: bytes, fmt: str) -> bool:
+    """A cut-off upload has a valid header but no image end marker; YouCam would only time out on it."""
+    if fmt == "png":
+        return b"IEND" in data[-4096:]
+    sos = data.find(b"\xff\xda")
+    return sos != -1 and data.find(b"\xff\xd9", sos) != -1
 
 
 class AnalyzeIn(BaseModel):

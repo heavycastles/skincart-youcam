@@ -1,4 +1,5 @@
 import base64
+import struct
 
 from fastapi.testclient import TestClient
 
@@ -6,7 +7,13 @@ from app import main
 from app.main import app
 
 client = TestClient(app)
-IMG = base64.b64encode(b"\xff\xd8 fake selfie bytes").decode()
+def jpeg(tag: bytes, w: int = 600, h: int = 800) -> bytes:
+    """Smallest structurally complete JPEG: SOI, SOF0 (size), SOS, payload, EOI."""
+    sof = b"\xff\xc0\x00\x11\x08" + struct.pack(">HH", h, w) + b"\x03" + b"\x01\x11\x00" * 3
+    return b"\xff\xd8" + sof + b"\xff\xda\x00\x02" + tag + b"\xff\xd9"
+
+
+IMG = base64.b64encode(jpeg(b"fake selfie bytes")).decode()
 
 
 def test_health_ui_version():
@@ -85,7 +92,7 @@ def test_sample_photo_and_score_fields():
 def test_tryon_and_order_survive_a_fresh_serverless_instance(tmp_path, monkeypatch):
     # On Vercel /analyze and /tryon may land on different instances; the browser re-sends what it has.
     monkeypatch.chdir(tmp_path)  # hosts may start the app from another working directory
-    img = base64.b64encode(b"\xff\xd8 another fake selfie").decode()
+    img = base64.b64encode(jpeg(b"another fake selfie")).decode()
     scan = client.post("/analyze", json={"image_base64": img}).json()
     assert scan["api_calls"] == 0 and "file_id" in scan  # mock mode: no YouCam requests, no upload
     main.scans.clear()
@@ -241,7 +248,7 @@ def test_photo_link_is_downloaded_once_and_analyzed_as_an_upload(monkeypatch):
     import struct
     _live(monkeypatch)
     monkeypatch.setattr(main, "_public_host", lambda url: True)
-    png = b"\x89PNG\r\n\x1a\n" + b"\x00\x00\x00\x0dIHDR" + struct.pack(">II", 800, 800) + b"rest"
+    png = b"\x89PNG\r\n\x1a\n" + b"\x00\x00\x00\x0dIHDR" + struct.pack(">II", 800, 800) + b"rest" + b"IEND\xaeB`\x82"
     monkeypatch.setattr(main, "_open_url", lambda url: io.BytesIO(png))
     seen = {}
     monkeypatch.setattr(main, "analyze_image", lambda image, url, ct: seen.update(image=image, url=url, ct=ct) or {})
