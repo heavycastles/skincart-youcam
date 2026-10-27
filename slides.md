@@ -38,6 +38,17 @@ Small cosmetics shops in **Central Asia / CIS** sell through Telegram & Instagra
 
 ---
 
+# Who it's for
+
+| Who | What they get |
+|---|---|
+| **Small beauty shops** selling in Telegram / Instagram chats (one owner, no web team) | Answers from their **own catalog**, and an order with the skin profile attached instead of "hi, how much?" |
+| **Their customers**, who can't test products through a chat | A plain-language skin snapshot, a short routine, a preview of what it targets, their **foundation shade** and a try-on **before paying** |
+
+Why it matters: fewer wrong-shade returns, fewer chats that go nowhere, a scored lead with context.
+
+---
+
 # What SkinCart does — one upload, four YouCam AI APIs
 
 1. **Skin Analysis** scores 12 concerns → top 3 focus areas + YouCam overlay masks

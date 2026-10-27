@@ -21,7 +21,8 @@ Small cosmetics shops in Central Asia/CIS sell mostly through Telegram and Insta
 1. Customer sends a selfie to the shop's **Telegram bot** (or the web page).
 2. **YouCam AI Skin Analysis API** scores 12 concerns (acne, pores, wrinkles, texture, moisture, oiliness,
    redness, radiance, dark circles, spots, eye bags, firmness).
-3. A matcher builds a routine from the shop's **catalog** (one product per category, weighted by need, always SPF)
+3. A matcher builds a routine from the shop's **catalog** (one product per category, weighted by need, every focus
+   area covered by at least one product, always SPF)
    and a **morning / evening plan** that handles ingredient clashes (retinal at night → salicylic cleanser in the
    morning, vitamin C under SPF, "no SPF" warning). It updates when the basket changes.
 4. **YouCam AI Skin Simulation** — "Preview what this basket targets": the customer's own photo with only the
@@ -35,10 +36,21 @@ Small cosmetics shops in Central Asia/CIS sell mostly through Telegram and Insta
 7. "Order" → contact → saved as a **LeadFlow lead** (normalized, de-duplicated, scored, with `skin_profile` + `basket`)
    → optional **n8n** workflow notifies the shop owner and sends a 14-day "re-scan your skin" follow-up.
 
-## Screenshots (live YouCam API, production demo, retaken 24 Oct 2026)
+## Who it's for
+
+- **Small beauty shops that sell in Telegram / Instagram chats** (Central Asia and CIS first): one owner, no website
+  team, the same "what should I buy for my skin?" question all day. SkinCart answers it from their own catalog and
+  hands over an order with the skin profile attached.
+- **Their customers**, who can't test a cream or a foundation through a chat: they get a plain-language skin
+  snapshot, a short routine, a preview of what it targets, their foundation shade and a try-on before they pay.
+- **Why it matters for the shop:** fewer wrong-shade returns, fewer "hi, how much?" chats that go nowhere, and
+  a scored lead with context instead of a guess.
+
+## Screenshots (live YouCam API, production demo, retaken 27 Oct 2026)
 
 Taken from https://skincart-youcam.vercel.app with the live YouCam API and a licensed stock portrait
-(Jake Nackos / Unsplash, see `docs/stock-face/`).
+(Jake Nackos / Unsplash, see `docs/stock-face/`). Desktop at 1280 px, mobile at 390 px; the shade match and the
+foundation try-on are from the 24 Oct live run (those cards have not changed since).
 
 | Skin snapshot | YouCam overlay masks |
 |---|---|
@@ -48,13 +60,19 @@ Taken from https://skincart-youcam.vercel.app with the live YouCam API and a lic
 | **Upload + scan** | **Order saved as a lead** |
 | ![Upload](docs/screenshots/02-upload-scanning.png) | ![Order](docs/screenshots/08-order-placed.png) |
 
-Skin Simulation, shade match and the morning / evening plan (same live run):
+Skin Simulation, shade match and the morning / evening plan:
 
 | Skin Simulation of what the basket targets | Foundation shade match (Facial Color Tones) |
 |---|---|
 | ![Skin simulation](docs/screenshots/10-skin-simulation.png) | ![Shade match](docs/screenshots/11-shade-match.png) |
 | **Matched foundation on the photo (Makeup VTO)** | **Morning / evening plan** |
 | ![Foundation try-on](docs/screenshots/12-foundation-tryon.png) | ![AM/PM plan](docs/screenshots/13-am-pm-plan.png) |
+
+On a phone (390 px):
+
+| Skin snapshot | Routine | Skin Simulation | Try-on | Order |
+|---|---|---|---|---|
+| ![Mobile analysis](docs/screenshots/14-mobile-390-analysis.png) | ![Mobile routine](docs/screenshots/15-mobile-390-routine.png) | ![Mobile simulation](docs/screenshots/16-mobile-390-simulation.png) | ![Mobile try-on](docs/screenshots/17-mobile-390-tryon.png) | ![Mobile order](docs/screenshots/18-mobile-390-order.png) |
 
 ## Architecture
 
